@@ -1,0 +1,315 @@
+diff --git a/templates/index.html b/templates/index.html
+index 2d361a7be327bb69bcf4e007d9760c634359c16c..0b5ea0ca21e0d83fa0d028acec961958615212e3 100644
+--- a/templates/index.html
+ b/templates/index.html
+@@ -1,5 1,309 @@
+ {% extends "base.html" %}
+ {% block title %}Nova CRM Dashboard{% endblock %}
+ {% block content %}
+-<!-- intentionally blank -->
+<div class="space-y-8">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <p class="text-sm uppercase tracking-[0.3em] text-muted">Daily Briefing</p>
+      <h1 class="mt-1 text-3xl font-semibold">Good morning, James</h1>
+      <p class="mt-2 text-sm text-muted max-w-2xl">
+        Here's a quick pulse on your travel pipeline, priority guests, and follow-ups so you can
+        craft unforgettable trips today.
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <button class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-white shadow-lg shadow-accent/40 transition hover:bg-accent/90">
+        <span class="inline-block h-2 w-2 rounded-full bg-white"></span>
+        Add New Lead
+      </button>
+      <button class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white">
+        Smart Itinerary Builder
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <section>
+    <h2 class="section-title mb-3">Today’s Snapshot</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <article class="card p-5">
+        <p class="text-xs uppercase tracking-[0.3em] text-muted">Qualified Leads</p>
+        <p class="mt-3 text-3xl font-semibold">42</p>
+        <div class="mt-4 flex items-center justify-between text-xs text-muted">
+          <span>vs. last week</span>
+          <span class="inline-flex items-center gap-1 text-emerald-400"><span class="text-base">&#9650;</span> 12%</span>
+        </div>
+      </article>
+      <article class="card p-5">
+        <p class="text-xs uppercase tracking-[0.3em] text-muted">Conversion Rate</p>
+        <p class="mt-3 text-3xl font-semibold">28%</p>
+        <div class="mt-4">
+          <div class="h-2 rounded-full bg-white/10">
+            <div class="h-full rounded-full bg-accent" style="width: 64%"></div>
+          </div>
+          <p class="mt-2 text-xs text-muted">Pipeline target: 45%</p>
+        </div>
+      </article>
+      <article class="card p-5">
+        <p class="text-xs uppercase tracking-[0.3em] text-muted">Trips In Progress</p>
+        <p class="mt-3 text-3xl font-semibold">17</p>
+        <ul class="mt-4 text-xs text-muted space-y-1">
+          <li class="flex items-center justify-between"><span>Departing this week</span><span class="text-white">5</span></li>
+          <li class="flex items-center justify-between"><span>Awaiting docs</span><span class="text-amber-300">3</span></li>
+        </ul>
+      </article>
+      <article class="card p-5">
+        <p class="text-xs uppercase tracking-[0.3em] text-muted">Revenue Forecast</p>
+        <p class="mt-3 text-3xl font-semibold">$128k</p>
+        <div class="mt-4 flex items-center gap-2 text-xs text-muted">
+          <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-300">8% month</span>
+          <span>Highest: Luxury Retreats</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-2 space-y-6">
+      <!-- Pipeline -->
+      <section class="card p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">Lead Pipeline</h2>
+            <p class="text-sm text-muted">Track how prospects are flowing across stages.</p>
+          </div>
+          <button class="text-xs uppercase tracking-[0.25em] text-accent hover:text-accent-2">View full pipeline</button>
+        </div>
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <p class="text-xs uppercase tracking-[0.3em] text-muted">New</p>
+            <p class="mt-2 text-2xl font-semibold">9</p>
+            <ul class="mt-4 space-y-2 text-sm text-muted">
+              <li class="flex items-center justify-between"><span>Maya Patel</span><span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300 text-xs">Safari</span></li>
+              <li class="flex items-center justify-between"><span>Trent &amp; Co.</span><span class="rounded-full bg-indigo-500/10 px-2 py-0.5 text-indigo-300 text-xs">Corporate</span></li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <p class="text-xs uppercase tracking-[0.3em] text-muted">Discovery</p>
+            <p class="mt-2 text-2xl font-semibold">11</p>
+            <ul class="mt-4 space-y-2 text-sm text-muted">
+              <li class="flex items-center justify-between"><span>Cheng Family</span><span class="rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-fuchsia-300 text-xs">Japan</span></li>
+              <li class="flex items-center justify-between"><span>Lucia Gomez</span><span class="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-300 text-xs">Cruise</span></li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <p class="text-xs uppercase tracking-[0.3em] text-muted">Proposal Sent</p>
+            <p class="mt-2 text-2xl font-semibold">7</p>
+            <ul class="mt-4 space-y-2 text-sm text-muted">
+              <li class="flex items-center justify-between"><span>Helena &amp; Max</span><span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300 text-xs">Honeymoon</span></li>
+              <li class="flex items-center justify-between"><span>Luis Pereira</span><span class="rounded-full bg-sky-500/10 px-2 py-0.5 text-sky-300 text-xs">Ski</span></li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <p class="text-xs uppercase tracking-[0.3em] text-muted">Booked</p>
+            <p class="mt-2 text-2xl font-semibold">6</p>
+            <ul class="mt-4 space-y-2 text-sm text-muted">
+              <li class="flex items-center justify-between"><span>Jordan Rivers</span><span class="rounded-full bg-accent/20 px-2 py-0.5 text-accent text-xs">Bali</span></li>
+              <li class="flex items-center justify-between"><span>Singh Family</span><span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300 text-xs">Canada</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Upcoming Departures -->
+      <section class="card p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">Upcoming Departures</h2>
+            <p class="text-sm text-muted">Double-check visas, payments, and final documents.</p>
+          </div>
+          <button class="text-xs uppercase tracking-[0.25em] text-accent hover:text-accent-2">Travel calendar</button>
+        </div>
+        <div class="mt-5 overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-muted">
+              <tr class="text-left">
+                <th class="pb-3 font-medium">Guest</th>
+                <th class="pb-3 font-medium">Destination</th>
+                <th class="pb-3 font-medium">Depart</th>
+                <th class="pb-3 font-medium">Status</th>
+                <th class="pb-3 font-medium text-right">Balance</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <tr class="align-top">
+                <td class="py-3">
+                  <p class="font-medium text-white">Mendez Family</p>
+                  <p class="text-xs text-muted">4 travelers • Barcelona  Amalfi</p>
+                </td>
+                <td class="py-3 text-muted">Spain &amp; Italy</td>
+                <td class="py-3 text-muted">May 28</td>
+                <td class="py-3">
+                  <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">Ready</span>
+                </td>
+                <td class="py-3 text-right font-medium">$2,400</td>
+              </tr>
+              <tr class="align-top">
+                <td class="py-3">
+                  <p class="font-medium text-white">Jonas &amp; Priya</p>
+                  <p class="text-xs text-muted">Honeymoon • Maldives Overwater</p>
+                </td>
+                <td class="py-3 text-muted">Maldives</td>
+                <td class="py-3 text-muted">Jun 2</td>
+                <td class="py-3">
+                  <span class="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">Docs Pending</span>
+                </td>
+                <td class="py-3 text-right font-medium">$5,980</td>
+              </tr>
+              <tr class="align-top">
+                <td class="py-3">
+                  <p class="font-medium text-white">Harper Group</p>
+                  <p class="text-xs text-muted">12 travelers • Incentive Retreat</p>
+                </td>
+                <td class="py-3 text-muted">Costa Rica</td>
+                <td class="py-3 text-muted">Jun 6</td>
+                <td class="py-3">
+                  <span class="inline-flex items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs text-sky-300">Payments</span>
+                </td>
+                <td class="py-3 text-right font-medium">$14,320</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Task List -->
+      <section class="card p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold">Priority Follow-ups</h2>
+            <p class="text-sm text-muted">AI ranked by traveler intent and recency.</p>
+          </div>
+          <button class="text-xs uppercase tracking-[0.25em] text-accent hover:text-accent-2">View all tasks</button>
+        </div>
+        <ul class="mt-5 space-y-4">
+          <li class="flex items-start gap-3 rounded-2xl border border-white/5 bg-white/2 p-4">
+            <input type="checkbox" class="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-accent focus:ring-accent" />
+            <div class="flex-1">
+              <p class="font-medium">Call Priya about seaplane transfer options</p>
+              <p class="text-xs text-muted">AI note: mention complimentary spa credit if booked today.</p>
+            </div>
+            <span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">High</span>
+          </li>
+          <li class="flex items-start gap-3 rounded-2xl border border-white/5 bg-white/2 p-4">
+            <input type="checkbox" class="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-accent focus:ring-accent" />
+            <div class="flex-1">
+              <p class="font-medium">Send Peru culinary itinerary revision to Maya</p>
+              <p class="text-xs text-muted">Add chef’s table in Lima  Amazon tasting cruise.</p>
+            </div>
+            <span class="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">Due Today</span>
+          </li>
+          <li class="flex items-start gap-3 rounded-2xl border border-white/5 bg-white/2 p-4">
+            <input type="checkbox" class="mt-1 h-4 w-4 rounded border-white/20 bg-white/10 text-accent focus:ring-accent" />
+            <div class="flex-1">
+              <p class="font-medium">Collect passports for Harper group</p>
+              <p class="text-xs text-muted">Reminder: concierge offered on-site pickup tomorrow 9am.</p>
+            </div>
+            <span class="rounded-full bg-sky-500/10 px-2 py-0.5 text-xs text-sky-300">In Progress</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="space-y-6">
+      <!-- AI Insights -->
+      <section class="card p-6">
+        <h2 class="text-lg font-semibold">AI Insights</h2>
+        <p class="mt-1 text-sm text-muted">Smart nudges based on sentiment, budget, and trip timelines.</p>
+        <ul class="mt-5 space-y-4 text-sm">
+          <li class="flex gap-3">
+            <div class="mt-1 h-2 w-2 rounded-full bg-emerald-400"></div>
+            <div>
+              <p class="font-medium">Upsell wellness retreat to Lucia</p>
+              <p class="text-muted">She opened the spa brochure 3 times last night.</p>
+            </div>
+          </li>
+          <li class="flex gap-3">
+            <div class="mt-1 h-2 w-2 rounded-full bg-amber-400"></div>
+            <div>
+              <p class="font-medium">Risk of churn: Cheng family</p>
+              <p class="text-muted">Response latency is 18h. Suggest sending curated bullet train guide.</p>
+            </div>
+          </li>
+          <li class="flex gap-3">
+            <div class="mt-1 h-2 w-2 rounded-full bg-sky-400"></div>
+            <div>
+              <p class="font-medium">Likely referral: Harper group</p>
+              <p class="text-muted">NPS pre-survey scored 9/10. Prompt to invite colleagues.</p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Inbox -->
+      <section class="card p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold">Inbox</h2>
+            <p class="text-sm text-muted">5 unread messages</p>
+          </div>
+          <button class="text-xs uppercase tracking-[0.25em] text-accent hover:text-accent-2">Open console</button>
+        </div>
+        <ul class="mt-5 space-y-4 text-sm">
+          <li class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <div class="flex items-center justify-between">
+              <p class="font-medium text-white">Lucia Gomez</p>
+              <span class="text-xs text-muted">08:45</span>
+            </div>
+            <p class="mt-2 text-muted">"Can we extend the cruise by two nights for Amazon excursions?"</p>
+          </li>
+          <li class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <div class="flex items-center justify-between">
+              <p class="font-medium text-white">Trent Hawkins</p>
+              <span class="text-xs text-muted">Yesterday</span>
+            </div>
+            <p class="mt-2 text-muted">Requesting carbon-offset options for the Singapore team offsite.</p>
+          </li>
+          <li class="rounded-2xl border border-white/5 bg-white/2 p-4">
+            <div class="flex items-center justify-between">
+              <p class="font-medium text-white">Hotel Anantara</p>
+              <span class="text-xs text-muted">Yesterday</span>
+            </div>
+            <p class="mt-2 text-muted">Confirmed complimentary breakfast upgrade for Jonas &amp; Priya.</p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="card p-6">
+        <h2 class="text-lg font-semibold">Quick Actions</h2>
+        <p class="mt-1 text-sm text-muted">Launch AI assistants tailored to travel operations.</p>
+        <div class="mt-5 grid grid-cols-1 gap-3">
+          <button class="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/2 px-4 py-3 text-left text-sm transition hover:border-accent/40">
+            <div>
+              <p class="font-medium text-white">Generate bespoke itinerary</p>
+              <p class="text-xs text-muted">Give the AI a budget  theme, get draft experiences instantly.</p>
+            </div>
+            <span class="rounded-full bg-accent/20 px-3 py-1 text-xs text-accent">Launch</span>
+          </button>
+          <button class="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/2 px-4 py-3 text-left text-sm transition hover:border-accent/40">
+            <div>
+              <p class="font-medium text-white">Summarize last client call</p>
+              <p class="text-xs text-muted">Auto-clean notes into next steps  email recap.</p>
+            </div>
+            <span class="rounded-full bg-accent/20 px-3 py-1 text-xs text-accent">Launch</span>
+          </button>
+          <button class="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/2 px-4 py-3 text-left text-sm transition hover:border-accent/40">
+            <div>
+              <p class="font-medium text-white">Monitor flight disruptions</p>
+              <p class="text-xs text-muted">AI watches partner feeds and alerts impacted travelers.</p>
+            </div>
+            <span class="rounded-full bg-accent/20 px-3 py-1 text-xs text-accent">Launch</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+ {% endblock %}
