@@ -10,3 +10,20 @@
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+.theme-select {
+  background: rgba(255,255,255,0.12);
+  color: #f8fafc;
+}
+
+.theme-select:focus {
+  background: rgba(124,92,255,0.18);
+}
+
+.theme-select option {
+  background: rgba(10,11,15,0.97);
+  color: #f8fafc;
+}
+
+.theme-select option[value=""] {
+  color: #94a3b8;
+}

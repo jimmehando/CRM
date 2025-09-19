@@ -1,4 +1,4 @@
-# Nova CRM, Blank Flask Template
+# SkyDesk, Blank Flask Template
 
 Dark, sleek Flask starter with a top bar and empty dashboard canvas.
 
