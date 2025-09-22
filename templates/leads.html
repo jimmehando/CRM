@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}SkyDesk Leads{% endblock %}
+{% block content %}
+{% set leads_by_type = leads_by_type or {'enquiry': [], 'quote': [], 'booking': []} %}
+{% set active_record_type = (active_record_type or 'enquiry') %}
+{% set is_enquiry_active = active_record_type == 'enquiry' %}
+{% set is_quote_active = active_record_type == 'quote' %}
+{% set is_booking_active = active_record_type == 'booking' %}
+<div class="space-y-8" data-default-lead-view="{{ active_record_type }}">
+  <div class="space-y-2">
+    <p class="text-sm uppercase tracking-[0.3em] text-muted">Lead Archive</p>
+    <h1 class="text-3xl font-semibold">Leads</h1>
+    <p class="text-sm text-muted max-w-2xl">
+      Browse every intake that SkyDesk has captured. Use the tabs to jump between enquiries, quotes, and bookings.
+    </p>
+  </div>
+
+  <div class="flex w-full gap-3 text-sm font-semibold" role="tablist" aria-label="Lead categories">
+    <button type="button" data-lead-view="enquiry" role="tab" aria-selected="{{ 'true' if is_enquiry_active else 'false' }}" class="lead-pill flex-1 rounded-full px-6 py-3 text-center text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 {{ 'bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90' if is_enquiry_active else 'border border-white/10 text-white/70 hover:border-white/30 hover:text-white' }}">
+      Enquiry
+    </button>
+    <button type="button" data-lead-view="quote" role="tab" aria-selected="{{ 'true' if is_quote_active else 'false' }}" class="lead-pill flex-1 rounded-full px-6 py-3 text-center text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 {{ 'bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90' if is_quote_active else 'border border-white/10 text-white/70 hover:border-white/30 hover:text-white' }}">
+      Quote
+    </button>
+    <button type="button" data-lead-view="booking" role="tab" aria-selected="{{ 'true' if is_booking_active else 'false' }}" class="lead-pill flex-1 rounded-full px-6 py-3 text-center text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 {{ 'bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90' if is_booking_active else 'border border-white/10 text-white/70 hover:border-white/30 hover:text-white' }}">
+      Booking
+    </button>
+  </div>
+
+  <div class="rounded-3xl border border-white/10 bg-white/5 p-8">
+    <div class="relative overflow-hidden">
+      <table class="min-w-full divide-y divide-white/10 text-left text-sm text-white/80 lead-table">
+        <thead class="text-xs uppercase tracking-[0.3em] text-white/50">
+          <tr>
+            <th scope="col" class="py-3 pr-6 cursor-pointer select-none" data-sort-key="submitted_at" data-sort-type="date" aria-sort="none">Date created</th>
+            <th scope="col" class="py-3 pr-6 cursor-pointer select-none" data-sort-key="name" data-sort-type="text" aria-sort="none">Name of pax</th>
+            <th scope="col" class="py-3 pr-6 cursor-pointer select-none" data-sort-key="destination" data-sort-type="text" aria-sort="none">Destination</th>
+            <th scope="col" class="py-3 cursor-pointer select-none" data-sort-key="travel_dates" data-sort-type="text" aria-sort="none">Travel dates</th>
+          </tr>
+        </thead>
+        <tbody data-lead-table="enquiry" class="divide-y divide-white/10{% if not is_enquiry_active %} hidden{% endif %}" aria-hidden="{{ "false" if is_enquiry_active else "true" }}">
+          {% if leads_by_type.enquiry %}
+            {% for lead in leads_by_type.enquiry %}
+              <tr class="lead-row transition hover:bg-white/5 cursor-pointer" role="link" tabindex="0" data-href="{{ url_for('lead_detail', record_type='enquiry', record_id=lead.record_id) }}">
+                <td class="py-4 pr-6 text-white/70" data-cell-key="submitted_at" data-sort-value="{{ lead.submitted_at_value }}">{{ lead.submitted_at_display }}</td>
+                <td class="py-4 pr-6 text-white" data-cell-key="name" data-sort-value="{{ lead.name_value }}">{{ lead.name_display }}</td>
+                <td class="py-4 pr-6 text-white/70" data-cell-key="destination" data-sort-value="{{ lead.destination_value }}">{{ lead.destination_display }}</td>
+                <td class="py-4 text-white/70" data-cell-key="travel_dates" data-sort-value="{{ lead.travel_dates_value }}">{{ lead.travel_dates_display }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr data-empty="true">
+              <td colspan="4" class="py-6 text-center text-muted">No enquiries yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+        <tbody data-lead-table="quote" class="divide-y divide-white/10{% if not is_quote_active %} hidden{% endif %}" aria-hidden="{{ "false" if is_quote_active else "true" }}">
+          {% if leads_by_type.quote %}
+            {% for lead in leads_by_type.quote %}
+              <tr class="lead-row transition hover:bg-white/5 cursor-pointer" role="link" tabindex="0" data-href="{{ url_for('lead_detail', record_type='quote', record_id=lead.record_id) }}">
+                <td class="py-4 pr-6 text-white/70" data-cell-key="submitted_at" data-sort-value="{{ lead.submitted_at_value }}">{{ lead.submitted_at_display }}</td>
+                <td class="py-4 pr-6 text-white" data-cell-key="name" data-sort-value="{{ lead.name_value }}">{{ lead.name_display }}</td>
+                <td class="py-4 pr-6 text-white/70" data-cell-key="destination" data-sort-value="{{ lead.destination_value }}">{{ lead.destination_display }}</td>
+                <td class="py-4 text-white/70" data-cell-key="travel_dates" data-sort-value="{{ lead.travel_dates_value }}">{{ lead.travel_dates_display }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr data-empty="true">
+              <td colspan="4" class="py-6 text-center text-muted">No quotes yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+        <tbody data-lead-table="booking" class="divide-y divide-white/10{% if not is_booking_active %} hidden{% endif %}" aria-hidden="{{ "false" if is_booking_active else "true" }}">
+          {% if leads_by_type.booking %}
+            {% for lead in leads_by_type.booking %}
+              <tr class="lead-row transition hover:bg-white/5 cursor-pointer" role="link" tabindex="0" data-href="{{ url_for('lead_detail', record_type='booking', record_id=lead.record_id) }}">
+                <td class="py-4 pr-6 text-white/70" data-cell-key="submitted_at" data-sort-value="{{ lead.submitted_at_value }}">{{ lead.submitted_at_display }}</td>
+                <td class="py-4 pr-6 text-white" data-cell-key="name" data-sort-value="{{ lead.name_value }}">{{ lead.name_display }}</td>
+                <td class="py-4 pr-6 text-white/70" data-cell-key="destination" data-sort-value="{{ lead.destination_value }}">{{ lead.destination_display }}</td>
+                <td class="py-4 text-white/70" data-cell-key="travel_dates" data-sort-value="{{ lead.travel_dates_value }}">{{ lead.travel_dates_display }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr data-empty="true">
+              <td colspan="4" class="py-6 text-center text-muted">No bookings yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const buttons = Array.from(document.querySelectorAll('[data-lead-view]'));
+    const tables = Array.from(document.querySelectorAll('[data-lead-table]'));
+    const headers = Array.from(document.querySelectorAll('[data-sort-key]'));
+    const defaultContainer = document.querySelector('[data-default-lead-view]');
+    if (!buttons.length || !tables.length) return;
+
+    let currentSort = { key: null, dir: 'asc' };
+
+    const attachRowHandlers = () => {
+      document.querySelectorAll('.lead-row').forEach((row) => {
+        if (row.dataset.bound === 'true') return;
+        row.dataset.bound = 'true';
+        row.addEventListener('click', () => {
+          const href = row.dataset.href;
+          if (href) window.location.href = href;
+        });
+        row.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            const href = row.dataset.href;
+            if (href) window.location.href = href;
+          }
+        });
+      });
+    };
+
+    const getActiveTbody = () => tables.find((tbody) => !tbody.classList.contains('hidden'));
+
+    const setActive = (target) => {
+      buttons.forEach((btn) => {
+        const isActive = btn.dataset.leadView === target;
+        btn.setAttribute('aria-selected', String(isActive));
+        btn.classList.toggle('bg-accent', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('shadow-accent/30', isActive);
+        btn.classList.toggle('shadow-lg', isActive);
+        btn.classList.toggle('border', !isActive);
+        btn.classList.toggle('border-white/10', !isActive);
+        btn.classList.toggle('text-white/70', !isActive);
+      });
+
+      tables.forEach((tbody) => {
+        const isMatch = tbody.dataset.leadTable === target;
+        tbody.classList.toggle('hidden', !isMatch);
+        tbody.setAttribute('aria-hidden', String(!isMatch));
+      });
+
+      if (currentSort.key) {
+        applySort(currentSort.key, currentSort.dir, false);
+      }
+
+      attachRowHandlers();
+    };
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => setActive(btn.dataset.leadView));
+    });
+
+    const compareValues = (a, b, type, direction) => {
+      if (type === 'date') {
+        const dateA = a ? Date.parse(a) || Date.parse(a.replace(' ', 'T')) || 0 : 0;
+        const dateB = b ? Date.parse(b) || Date.parse(b.replace(' ', 'T')) || 0 : 0;
+        return direction === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+
+      const textA = (a || '').toString().toLowerCase();
+      const textB = (b || '').toString().toLowerCase();
+      if (textA === textB) return 0;
+      if (direction === 'asc') return textA > textB ? 1 : -1;
+      return textA < textB ? 1 : -1;
+    };
+
+    const resetHeaderState = () => {
+      headers.forEach((header) => {
+        header.dataset.sortDir = '';
+        header.setAttribute('aria-sort', 'none');
+      });
+    };
+
+    const applySort = (key, direction, toggleState = true) => {
+      const activeTbody = getActiveTbody();
+      if (!activeTbody) return;
+
+      const rows = Array.from(activeTbody.querySelectorAll('tr')).filter((row) => !row.dataset.empty);
+      if (rows.length <= 1) return;
+
+      const header = headers.find((h) => h.dataset.sortKey === key);
+      const type = header?.dataset.sortType || 'text';
+
+      rows.sort((rowA, rowB) => {
+        const cellA = rowA.querySelector(`[data-cell-key="${key}"]`);
+        const cellB = rowB.querySelector(`[data-cell-key="${key}"]`);
+        const valueA = cellA?.dataset.sortValue || '';
+        const valueB = cellB?.dataset.sortValue || '';
+        return compareValues(valueA, valueB, type, direction);
+      });
+
+      rows.forEach((row) => activeTbody.appendChild(row));
+
+      if (toggleState && header) {
+        resetHeaderState();
+        header.dataset.sortDir = direction;
+        header.setAttribute('aria-sort', direction === 'asc' ? 'ascending' : 'descending');
+      }
+
+      currentSort = { key, dir: direction };
+    };
+
+    headers.forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        const currentDir = header.dataset.sortDir === 'asc' ? 'desc' : 'asc';
+        applySort(key, currentDir);
+      });
+    });
+
+    const initialView = defaultContainer ? defaultContainer.dataset.defaultLeadView : 'enquiry';
+    setActive(initialView);
+    applySort('submitted_at', 'desc');
+    attachRowHandlers();
+  })();
+</script>
+{% endblock %}

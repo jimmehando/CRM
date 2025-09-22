@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+{% block title %}Quote {{ quote.lead_id or record_id }} - SkyDesk{% endblock %}
+{% block content %}
+{% set metadata = metadata or {} %}
+{% set trip = quote.get('trip') or {} %}
+{% set trip_dates = trip.get('dates') or {} %}
+{% set accommodation = quote.get('accommodation') or [] %}
+{% set flights = quote.get('flights') or [] %}
+{% set services = quote.get('services') or [] %}
+{% set other_pax = quote.get('other_pax') or [] %}
+{% set totals = quote.get('totals') or {} %}
+{% set grand_total = totals.get('grand_total') or {} %}
+{% set assistant_notes = quote.get('assistant_notes') %}
+<div class="mx-auto max-w-6xl space-y-8">
+  <nav class="flex flex-wrap items-center gap-2 text-sm text-white/60">
+    <a href="{{ url_for('leads') }}" class="transition hover:text-white">Leads</a>
+    <span aria-hidden="true">/</span>
+    <span class="text-white/80">Quote {{ quote.lead_id or record_id }}</span>
+  </nav>
+  {% with flashes = get_flashed_messages(with_categories=true) %}
+    {% if flashes %}
+      <div class="fixed top-20 right-6 z-40 space-y-3" data-toast-stack>
+        {% for category, message in flashes %}
+          {% if category == 'success' %}
+            <div class="flex items-start gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 shadow-lg shadow-emerald-900/40 transition duration-300" data-toast>
+              <div class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200 text-lg font-semibold">&#10003;</div>
+              <div>
+                <p class="font-semibold text-emerald-100">Saved to archive</p>
+                <p class="mt-1 text-emerald-100/80">{{ message }}</p>
+              </div>
+              <button type="button" class="ml-auto text-emerald-100/70 transition hover:text-emerald-100" data-dismiss-toast aria-label="Dismiss notification">&times;</button>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-2">
+      <p class="text-sm uppercase tracking-[0.3em] text-muted">Quote Detail</p>
+      <h1 class="text-3xl font-semibold">{{ quote.client.name if quote.client else 'Quote' }}</h1>
+      <div class="flex flex-wrap items-center gap-3 text-xs text-white/70">
+        <span class="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-1">Lead ID {{ quote.lead_id or record_id }}</span>
+        <span class="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-1">Issued {{ quote.issued_at or 'N/A' }}</span>
+        {% if metadata.get('saved_at') %}
+        <span class="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-1">Archived {{ metadata.get('saved_at') }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <a href="{{ url_for('leads') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white">
+      <span aria-hidden="true">&#8592;</span>
+      Back to leads
+    </a>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-[2fr,1fr]">
+    <section class="space-y-6">
+      <article class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Trip Overview</h2>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+          <dt class="text-white/50">Destinations</dt>
+          <dd class="mt-1 text-white">{{ (trip.get('destinations') or trip.get('regions')) | join(', ') if (trip.get('destinations') or trip.get('regions')) else 'N/A' }}</dd>
+          </div>
+          <div>
+            <dt class="text-white/50">Locations</dt>
+            <dd class="mt-1 text-white">{{ trip.get('locations') | join(', ') if trip.get('locations') else 'N/A' }}</dd>
+          </div>
+          <div>
+            <dt class="text-white/50">Start date</dt>
+            <dd class="mt-1 text-white/80">{{ trip_dates.get('start') or 'TBC' }}</dd>
+          </div>
+          <div>
+            <dt class="text-white/50">End date</dt>
+            <dd class="mt-1 text-white/80">{{ trip_dates.get('end') or 'TBC' }}</dd>
+          </div>
+          <div>
+            <dt class="text-white/50">Nights</dt>
+            <dd class="mt-1 text-white/80">{{ trip_dates.get('nights') if trip_dates.get('nights') is not none else 'N/A' }}</dd>
+          </div>
+        </dl>
+      </article>
+
+      {% if flights %}
+      <article class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Flights</h2>
+          {% set seg_total = 0 %}
+          {% for f in flights %}{% set seg_total = seg_total + ((f.get('segments') or []) | length) %}{% endfor %}
+          <span class="text-xs text-white/50">{{ seg_total }} segment{{ 's' if seg_total != 1 else '' }}</span>
+        </div>
+        <div class="space-y-3">
+          {% for flight in flights %}
+          {% set segs = flight.get('segments') or [] %}
+          {% set lays = flight.get('layovers') or [] %}
+          <article class="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="text-white font-semibold">{{ flight.get('origin') or '?' }} → {{ flight.get('destination') or '?' }}{% if flight.get('route') %} · {{ flight.get('route') }}{% endif %}</p>
+              {% if flight.get('pnr') %}<p class="text-xs text-white/60">PNR {{ flight.get('pnr') }}</p>{% endif %}
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-white/80">
+                <thead class="text-white/50">
+                  <tr>
+                    <th class="text-left py-1 pr-2">Carrier</th>
+                    <th class="text-left py-1 pr-2">Flight</th>
+                    <th class="text-left py-1 pr-2">From</th>
+                    <th class="text-left py-1 pr-2">To</th>
+                    <th class="text-left py-1 pr-2">Date</th>
+                    <th class="text-left py-1 pr-2">Dep</th>
+                    <th class="text-left py-1 pr-2">Arr</th>
+                    <th class="text-left py-1 pr-2">Class</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/10">
+                  {% for seg in segs %}
+                  <tr>
+                    <td class="py-1 pr-2">{{ seg.get('carrier') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('flight_number') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('origin') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('destination') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('depart_date') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('depart_time_local') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('arrive_time_local') or '' }}</td>
+                    <td class="py-1 pr-2">{{ seg.get('booking_class') or '' }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </article>
+      {% endif %}
+
+      {% if accommodation %}
+      <article class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80 space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Accommodation</h2>
+        <div class="space-y-3">
+          {% for stay in accommodation %}
+          <article class="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <p class="text-white font-semibold">{{ stay.get('name') or 'Property' }}</p>
+            <p class="mt-1 text-xs text-white/60">{{ stay.get('check_in') or 'TBC' }} to {{ stay.get('check_out') or 'TBC' }} &middot; {{ stay.get('nights') if stay.get('nights') is not none else '?' }} nights</p>
+            {% if stay.get('room_type') %}
+            <p class="text-xs text-white/60">Room: {{ stay.get('room_type') }}</p>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </article>
+      {% endif %}
+
+      {% if services %}
+      <article class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80 space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Services</h2>
+        <div class="space-y-3">
+          {% for service in services %}
+          <article class="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <p class="text-white font-semibold">{{ service.get('type') or 'Service' }}</p>
+            <p class="mt-1 text-xs text-white/60">{{ service.get('description') or 'Details pending' }}</p>
+            <p class="text-xs text-white/50">{{ service.get('depart_date') or 'TBC' }}{% if service.get('return_date') %} → {{ service.get('return_date') }}{% endif %}</p>
+            {% if service.get('supplier_ref') %}
+            <p class="text-xs text-white/50">Ref {{ service.get('supplier_ref') }}</p>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </article>
+      {% endif %}
+    </section>
+
+    <aside class="space-y-6">
+      <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80 space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Key details</h2>
+        <dl class="space-y-2">
+          <div>
+            <dt class="text-white/50">Grand total</dt>
+            <dd class="mt-1 text-white">{{ grand_total.get('amount') if grand_total.get('amount') is not none else '-' }} {{ grand_total.get('currency') or '' }}</dd>
+          </div>
+          <div>
+            <dt class="text-white/50">Original file</dt>
+            <dd class="mt-1 text-white/80">{{ metadata.get('original_filename') or 'N/A' }}</dd>
+          </div>
+          {% if metadata.get('notes') %}
+          <div>
+            <dt class="text-white/50">Parser notes</dt>
+            <dd class="mt-1 text-white/70">{{ metadata.get('notes') }}</dd>
+          </div>
+          {% endif %}
+        </dl>
+      </section>
+
+      <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Travellers</h2>
+        {% if other_pax %}
+        <ul class="mt-4 space-y-2">
+          {% for pax in other_pax %}
+          <li class="flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-2 text-xs">
+            <span class="text-white">{{ pax.get('name') or 'Passenger' }}</span>
+            <span class="text-white/60 uppercase">{{ pax.get('pax_type') or 'TBC' }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-4 text-xs text-white/60">No additional passengers captured.</p>
+        {% endif %}
+      </section>
+
+      <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Documents</h2>
+        {% if documents %}
+        <ul class="mt-4 space-y-2">
+          {% for filename in documents %}
+          <li>
+            <a href="{{ url_for('quote_document', record_id=record_id, filename=filename) }}" class="inline-flex items-center gap-2 text-accent hover:text-accent/80">
+              <span aria-hidden="true" class="text-base">&#128196;</span>
+              {{ filename }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-4 text-xs text-white/60">No supporting documents archived.</p>
+        {% endif %}
+      </section>
+
+      {% if assistant_notes %}
+      <section class="rounded-3xl border border-accent/40 bg-accent/10 p-6 text-sm text-white/80">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/70">Assistant notes</h2>
+        <p class="mt-3 text-white/80">{{ assistant_notes }}</p>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+
+  <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80">
+    <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Notes</h2>
+    <form method="post" class="mt-4 space-y-4">
+      <input type="hidden" name="form_type" value="notes">
+      <textarea name="notes" rows="6" placeholder="Add context, preferences, or follow-up actions." class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">{{ quote.notes or '' }}</textarea>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span class="text-xs text-white/50">
+          {% if quote.notes %}
+            Update the notes and hit save to capture the latest briefing.
+          {% else %}
+            No notes saved yet &mdash; start tracking insights or next steps here.
+          {% endif %}
+        </span>
+        <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">
+          Save notes
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80 space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Communication log</h2>
+        <p class="mt-2 text-xs text-white/60">Track every touchpoint with the client here.</p>
+      </div>
+      <button type="button" data-open-comm-modal class="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+        Log new touchpoint
+      </button>
+    </div>
+    <div class="space-y-3">
+      {% if communications %}
+        {% for entry in communications %}
+          <article class="space-y-3 rounded-2xl border border-white/10 bg-white/10 p-4">
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+              <span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 {{ entry.badge_class }}">{{ entry.badge_text }}</span>
+              <span class="text-white/60">{{ entry.timestamp_display }}</span>
+              <span class="text-white/60">{{ entry.method_display }}</span>
+            </div>
+            {% if entry.note %}
+              <p class="text-sm text-white/80">{{ entry.note }}</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      {% else %}
+        <article class="rounded-2xl border border-white/10 bg-white/10 p-4 text-xs text-white/60">
+          No communication captured yet. Add the first touchpoint to kick off the log.
+        </article>
+      {% endif %}
+    </div>
+  </section>
+
+  
+</div>
+
+<div id="communication-modal" class="fixed inset-0 z-50 hidden">
+  <div data-modal-overlay class="flex h-full w-full items-center justify-center bg-black/60 p-4">
+    <div class="w-full max-w-xl rounded-3xl border border-white/10 bg-bg p-6 text-sm text-white shadow-2xl shadow-black/40">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-semibold">Log communication</h3>
+        <button type="button" data-close-comm-modal class="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70 transition hover:border-white/30 hover:text-white">Close</button>
+      </div>
+      <form method="post" class="mt-5 space-y-4">
+        <input type="hidden" name="form_type" value="log">
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Date &amp; time</span>
+          <input type="datetime-local" name="log_timestamp" value="{{ default_timestamp }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" required>
+        </label>
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Contact method</span>
+          <select name="log_method" class="theme-select rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-left text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+            <option>Email</option>
+            <option>Call</option>
+            <option>SMS</option>
+            <option>In-person</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <fieldset class="flex flex-wrap items-center gap-4">
+          <legend class="text-white/70">Direction</legend>
+          <label class="inline-flex items-center gap-2 text-white/80">
+            <input type="radio" name="log_direction" value="incoming" checked class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
+            Incoming
+          </label>
+          <label class="inline-flex items-center gap-2 text-white/80">
+            <input type="radio" name="log_direction" value="outgoing" class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
+            Outgoing
+          </label>
+        </fieldset>
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Summary</span>
+          <textarea name="log_body" rows="4" placeholder="Capture key points from the interaction." class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"></textarea>
+        </label>
+        <div class="flex justify-end gap-3">
+          <button type="button" data-close-comm-modal class="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/70 transition hover:border-white/30 hover:text-white">Cancel</button>
+          <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">Add entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {\n    const existingToastInit = true;\n    const modal = document.getElementById('communication-modal');
+    const openButton = document.querySelector('[data-open-comm-modal]');
+    const closeButtons = modal ? modal.querySelectorAll('[data-close-comm-modal]') : [];
+
+    if (!modal || !openButton) return;
+
+    const toggleModal = (show) => {
+      modal.classList.toggle('hidden', !show);
+      if (show) {
+        const firstField = modal.querySelector('input[name="log_timestamp"]');
+        firstField?.focus();
+      } else {
+        openButton.focus();
+      }
+    };
+
+    openButton.addEventListener('click', () => toggleModal(true));
+    closeButtons.forEach((btn) => btn.addEventListener('click', () => toggleModal(false)));
+
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal || event.target.hasAttribute('data-modal-overlay')) {
+        toggleModal(false);
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+        toggleModal(false);
+      }
+    });
+  })();
+
+  (function () {
+    const toasts = Array.from(document.querySelectorAll('[data-toast]'));
+    toasts.forEach((toast, index) => {
+      const dismiss = toast.querySelector('[data-dismiss-toast]');
+      const hide = () => {
+        toast.classList.add('opacity-0', 'translate-y-1');
+        setTimeout(() => toast.remove(), 250);
+      };
+      if (dismiss) {
+        dismiss.addEventListener('click', hide);
+      }
+      setTimeout(hide, 6000 + index * 400);
+    });
+  })();
+</script>
+{% endblock %}
+
+

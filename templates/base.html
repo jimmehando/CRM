@@ -12,11 +12,12 @@
         theme: {
           extend: {
             colors: {
-              bg: "#0a0b0f",
-              panel: "rgba(22,24,29,0.8)",
-              muted: "#9aa4b2",
-              accent: "#7c5cff",
-              "accent-2": "#2dd4bf"
+              bg: "#05060b",
+              panel: "rgba(26,29,39,0.85)",
+              muted: "#a6b3c9",
+              accent: "#8c6cff",
+              "accent-2": "#36f0d0",
+              highlight: "#ff71d6"
             },
             backdropBlur: { xs: "2px" }
           }
@@ -29,16 +30,20 @@
   <body class="h-full bg-bg text-white selection:bg-accent selection:text-white">
     <div class="min-h-screen relative overflow-hidden">
       <!-- Background glow -->
-      <div aria-hidden="true" class="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full opacity-30 blur-3xl bg-gradient-to-tr from-accent via-accent-2 to-fuchsia-500"></div>
-      <div aria-hidden="true" class="pointer-events-none absolute top-1/3 -right-40 h-96 w-96 rounded-full opacity-20 blur-3xl bg-gradient-to-tr from-fuchsia-600 via-accent to-indigo-600"></div>
+      <div aria-hidden="true" class="pointer-events-none absolute -top-48 -left-48 h-[28rem] w-[28rem] rounded-full opacity-40 blur-3xl bg-gradient-to-tr from-accent via-accent-2 to-highlight"></div>
+      <div aria-hidden="true" class="pointer-events-none absolute top-1/4 -right-40 h-[26rem] w-[26rem] rounded-full opacity-30 blur-3xl bg-gradient-to-tr from-highlight via-accent to-indigo-600"></div>
+      <div aria-hidden="true" class="pointer-events-none absolute bottom-0 left-1/2 h-[22rem] w-[22rem] -translate-x-1/2 opacity-25 blur-3xl bg-gradient-to-tr from-accent-2 via-highlight to-sky-500"></div>
 
       <!-- Top bar -->
       <header class="sticky top-0 z-30 backdrop-blur-xs bg-black/30 border-b border-white/5">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-          <div class="flex items-center gap-3">
+          <a href="{{ url_for('dashboard') }}" class="flex items-center gap-3 text-white transition hover:text-accent">
             <img src="{{ url_for('static', filename='logo.svg') }}" class="h-6 w-6" alt="Logo">
-            <h1 class="text-lg font-semibold tracking-wide">SkyDesk</h1>
-          </div>
+            <span class="text-lg font-semibold tracking-wide">SkyDesk</span>
+          </a>
+          <nav class="flex items-center gap-6 text-sm font-semibold text-white/70">
+            <a href="{{ url_for('leads') }}" class="transition hover:text-white">Leads</a>
+          </nav>
         </div>
       </header>
 

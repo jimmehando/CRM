@@ -1,26 +1,122 @@
- {% extends "base.html" %}
- {% block title %}SkyDesk Dashboard{% endblock %}
- {% block content %}
-<!-- intentionally blank -->
-<div class="space-y-8">
-  <!-- Header -->
-  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-    <div>
+{% extends "base.html" %}
+{% block title %}SkyDesk Dashboard{% endblock %}
+{% block content %}
+{% set lead_totals = lead_totals or {} %}
+{% set recent_leads = recent_leads or [] %}
+<div class="space-y-10">
+  <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div class="space-y-2">
       <p class="text-sm uppercase tracking-[0.3em] text-muted">Daily Briefing</p>
-      <h1 class="mt-1 text-3xl font-semibold">Good morning, James</h1>
-      <p class="mt-2 text-sm text-muted max-w-2xl">
-        Here's a quick pulse on your travel pipeline, priority guests, and follow-ups so you can
-        craft unforgettable trips today.
+      <h1 class="text-3xl font-semibold">Good morning, James</h1>
+      <p class="text-sm text-muted max-w-2xl">
+        Quick scan of the latest activity across enquiries, quotes, and bookings so you can line up the next concierge moves.
       </p>
     </div>
     <div class="flex flex-wrap items-center gap-3">
-      <a href="{{ url_for('leads_new') }}" class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-medium text-white shadow-lg shadow-accent/40 transition hover:bg-accent/90">
+      <a href="{{ url_for('leads_new') }}" class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/40 transition hover:bg-accent/90">
         <span class="inline-block h-2 w-2 rounded-full bg-white"></span>
-        Add New Lead
+        Add new lead
       </a>
-      <button class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:text-white">
-        Smart Itinerary Builder
-      </button>
+      <a href="{{ url_for('leads') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+        View archive
+      </a>
     </div>
   </div>
- {% endblock %}
+
+  {% with flashes = get_flashed_messages(with_categories=true) %}
+    {% if flashes %}
+      <div class="fixed top-20 right-6 z-40 space-y-3" data-toast-stack>
+        {% for category, message in flashes %}
+          {% if category == 'success' %}
+            <div class="flex items-start gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100 shadow-lg shadow-emerald-900/40 transition duration-300" data-toast>
+              <div class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-200 text-lg font-semibold">&#10003;</div>
+              <div>
+                <p class="font-semibold text-emerald-100">Saved to archive</p>
+                <p class="mt-1 text-emerald-100/80">{{ message }}</p>
+              </div>
+              <button type="button" class="ml-auto text-emerald-100/70 transition hover:text-emerald-100" data-dismiss-toast aria-label="Dismiss notification">&times;</button>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <a href="{{ url_for('leads', record_type='enquiry') }}" class="block rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-lg shadow-black/30 transition hover:border-accent/40 hover:shadow-accent/30">      <p class="text-xs uppercase tracking-[0.3em] text-muted">Enquiries</p>
+      <p class="mt-3 text-4xl font-semibold">{{ lead_totals.get('enquiry', 0) }}</p></a>  
+    <a href="{{ url_for('leads', record_type='quote') }}" class="block rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-lg shadow-black/30 transition hover:border-accent/40 hover:shadow-accent/30">      <p class="text-xs uppercase tracking-[0.3em] text-muted">Quotes</p>
+      <p class="mt-3 text-4xl font-semibold">{{ lead_totals.get('quote', 0) }}</p></a>
+    <a href="{{ url_for('leads', record_type='booking') }}" class="block rounded-3xl border border-white/10 bg-white/5 p-6 text-white shadow-lg shadow-black/30 transition hover:border-accent/40 hover:shadow-accent/30">      <p class="text-xs uppercase tracking-[0.3em] text-muted">Bookings</p>
+      <p class="mt-3 text-4xl font-semibold">{{ lead_totals.get('booking', 0) }}</p></a>  
+    <div class="rounded-3xl border border-accent/40 bg-accent/10 p-6 shadow-lg shadow-accent/30">
+      <p class="text-xs uppercase tracking-[0.3em] text-white/70">Shortcuts</p>
+      <ul class="mt-4 space-y-3 text-sm text-white/80">
+        <li><a href="{{ url_for('leads_new') }}" class="inline-flex items-center gap-2 transition hover:text-white"><span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>Log an enquiry intake</a></li>
+        <li><a href="{{ url_for('leads') }}" class="inline-flex items-center gap-2 transition hover:text-white"><span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>Review the lead archive</a></li>
+        <li><a href="{{ url_for('leads_new', record_type='quote') }}" class="inline-flex items-center gap-2 transition hover:text-white"><span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>Upload a quote PDF</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-black/30">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="text-sm uppercase tracking-[0.3em] text-muted">Recent activity</p>
+        <h2 class="mt-1 text-2xl font-semibold">Latest leads</h2>
+      </div>
+      <a href="{{ url_for('leads') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+        Open archive
+      </a>
+    </div>
+
+    <div class="mt-6">
+      {% if recent_leads %}
+        <ul role="list" class="divide-y divide-white/10">
+          {% for lead in recent_leads %}
+            <li>
+              <a href="{{ lead.detail_url }}" class="group flex flex-col gap-3 py-4 transition hover:bg-white/5 rounded-2xl px-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/70">{{ lead.type_label }}</span>
+                    <span class="text-lg font-semibold text-white">{{ lead.name_display }}</span>
+                  </div>
+                  <span class="text-sm text-white/60">{{ lead.submitted_at_display }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-4 text-sm text-white/70">
+                  <span class="inline-flex items-center gap-2"><span class="inline-block h-2 w-2 rounded-full bg-accent"></span>{{ lead.destination_display }}</span>
+                  <span>{{ lead.travel_dates_display }}</span>
+                </div>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="rounded-2xl border border-white/10 bg-black/20 px-6 py-10 text-center text-sm text-muted">
+          Leads you capture will appear here for quick follow-up.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const toasts = Array.from(document.querySelectorAll('[data-toast]'));
+    toasts.forEach((toast, index) => {
+      const dismiss = toast.querySelector('[data-dismiss-toast]');
+      const hide = () => {
+        toast.classList.add('opacity-0', 'translate-y-1');
+        setTimeout(() => toast.remove(), 250);
+      };
+      if (dismiss) {
+        dismiss.addEventListener('click', hide);
+      }
+      setTimeout(hide, 6000 + index * 400);
+    });
+  })();
+</script>
+{% endblock %}
+
+
+

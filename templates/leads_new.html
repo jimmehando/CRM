@@ -1,121 +1,274 @@
 {% extends "base.html" %}
-{% block title %}SkyDesk | New Lead{% endblock %}
+{% block title %}New SkyDesk Enquiry{% endblock %}
 {% block content %}
-<div class="relative min-h-[calc(100vh-8rem)] pb-28 px-4 sm:px-6">
-  <div class="max-w-5xl mx-auto space-y-6">
-    <div class="flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-muted">
-      <span class="inline-flex h-2 w-2 rounded-full bg-accent"></span>
-      Lead Intake Worksheet
+{% set active_record_type = active_record_type or 'enquiry' %}
+{% set form_data = form_data or {} %}
+{% set field_errors = field_errors or {} %}
+{% set error_messages = error_messages or [] %}
+{% set is_enquiry_active = active_record_type == 'enquiry' %}
+{% set is_quote_active = active_record_type == 'quote' %}
+{% set is_booking_active = active_record_type == 'booking' %}
+{% set month_options = month_options or [] %}
+{% set year_options = year_options or [] %}
+<div class="space-y-8">
+  <div class="max-w-3xl space-y-4">
+    <p class="text-sm uppercase tracking-[0.3em] text-muted">Enquiry Intake</p>
+    <h1 class="text-3xl font-semibold">Add a new enquiry</h1>
+    <p class="text-sm text-muted max-w-2xl">
+      This workspace is standing by. Return soon to capture traveler preferences, trip goals,
+      and follow-up reminders in one place.
+    </p>
+  </div>
+
+  <div class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-black/40" data-record-card>
+    <div class="flex w-full gap-3 text-sm font-semibold" data-record-tabs role="group" aria-label="Create record type">
+      <button type="button" data-panel="enquiry" aria-pressed="{{ 'true' if is_enquiry_active else 'false' }}" class="record-toggle flex-1 rounded-full px-6 py-3 text-center text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 {% if is_enquiry_active %}bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90{% else %}border border-white/10 text-white/70 hover:border-white/30 hover:text-white{% endif %}" data-active="bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90" data-inactive="border border-white/10 text-white/70 hover:border-white/30 hover:text-white">
+        Enquiry
+      </button>
+      <button type="button" data-panel="quote" aria-pressed="{{ 'true' if is_quote_active else 'false' }}" class="record-toggle flex-1 rounded-full px-6 py-3 text-center text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 {% if is_quote_active %}bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90{% else %}border border-white/10 text-white/70 hover:border-white/30 hover:text-white{% endif %}" data-active="bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90" data-inactive="border border-white/10 text-white/70 hover:border-white/30 hover:text-white">
+        Quote
+      </button>
+      <button type="button" data-panel="booking" aria-pressed="{{ 'true' if is_booking_active else 'false' }}" class="record-toggle flex-1 rounded-full px-6 py-3 text-center text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 {% if is_booking_active %}bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90{% else %}border border-white/10 text-white/70 hover:border-white/30 hover:text-white{% endif %}" data-active="bg-accent text-white shadow-lg shadow-accent/30 hover:bg-accent/90" data-inactive="border border-white/10 text-white/70 hover:border-white/30 hover:text-white">
+        Booking
+      </button>
     </div>
 
-    <section class="card overflow-hidden">
-      <header class="border-b border-white/5 bg-white/5 px-6 py-6">
-        <h2 class="text-2xl font-semibold text-white">Create Lead</h2>
-        <p class="mt-2 text-sm text-muted max-w-2xl">
-          Capture the trip essentials so your concierge team can craft a memorable escape.
-        </p>
-      </header>
+    {% if error_messages %}
+    <div class="mt-6 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-100">
+      <p class="font-semibold text-rose-200">Please fix the highlighted fields.</p>
+      <ul class="mt-2 space-y-1">
+        {% for message in error_messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
 
-      <form action="{{ url_for('leads_new') }}" method="post" class="px-6 pt-8 pb-8 space-y-8">
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <label for="quote-id" class="text-sm font-medium text-white/80">Quote ID</label>
-            <input id="quote-id" name="quote_id" type="text" placeholder="e.g. Q-2041"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="lead-name" class="text-sm font-medium text-white/80">Lead Pax Name</label>
-            <input id="lead-name" name="lead_name" type="text" placeholder="e.g. Jamie Rivera"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="lead-email" class="text-sm font-medium text-white/80">Lead Pax Email</label>
-            <input id="lead-email" name="lead_email" type="email" placeholder="name@example.com"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="lead-phone" class="text-sm font-medium text-white/80">Lead Pax Phone</label>
-            <input id="lead-phone" name="lead_phone" type="tel" placeholder="+1 (555) 123-4567"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="origin" class="text-sm font-medium text-white/80">Origin</label>
-            <input id="origin" name="origin" type="text" placeholder="Departure city"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="departure" class="text-sm font-medium text-white/80">Destination</label>
-            <input id="departure" name="departure" type="text" placeholder="Destination"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="depart-date" class="text-sm font-medium text-white/80">Depart Date</label>
-            <input id="depart-date" name="depart_date" type="date"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="return-date" class="text-sm font-medium text-white/80">Return Date</label>
-            <input id="return-date" name="return_date" type="date"
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-sm text-white focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60" />
-          </div>
-          <div>
-            <label for="source" class="text-sm font-medium text-white/80">Source</label>
-            <div class="relative">
-              <select id="source" name="source"
-                class="theme-select mt-2 w-full appearance-none rounded-2xl border border-white/10 bg-white/15 px-4 py-2 text-sm text-white focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60">
-                <option value="" disabled selected>Choose source</option>
-                <option value="Walk-In">Walk-In</option>
-                <option value="Phone">Phone</option>
-                <option value="Web">Web</option>
-                <option value="Referal">Referal</option>
-                <option value="F/F">F/F</option>
-              </select>
-              <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white/50">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 9l6 6 6-6" />
-                </svg>
-              </span>
-            </div>
-          </div>
-          <div>
-            <label for="status" class="text-sm font-medium text-white/80">Status</label>
-            <div class="relative">
-              <select id="status" name="status"
-                class="theme-select mt-2 w-full appearance-none rounded-2xl border border-white/10 bg-white/15 px-4 py-2 text-sm text-white focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60">
-                <option value="" disabled selected>Choose status</option>
-                <option value="New">New</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Quoted">Quoted</option>
-                <option value="Booked">Booked</option>
-                <option value="Closed">Closed</option>
-              </select>
-              <span class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white/50">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 9l6 6 6-6" />
-                </svg>
-              </span>
-            </div>
-          </div>
-          <div class="md:col-span-2">
-            <label for="notes" class="text-sm font-medium text-white/80">Notes</label>
-            <textarea id="notes" name="notes" rows="4" placeholder="Itinerary preferences, must-haves, special occasions..."
-              class="mt-2 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-accent/60 focus:outline-none focus:ring-2 focus:ring-accent/60"></textarea>
-          </div>
+    <div class="mt-8" data-record-panels>
+      <form method="post" class="record-panel space-y-8 text-sm text-white/80 {% if not is_enquiry_active %}hidden{% endif %}" data-panel-target="enquiry" aria-hidden="{{ 'false' if is_enquiry_active else 'true' }}">
+        <input type="hidden" name="record_type" value="enquiry" />
+        <div class="grid gap-5 sm:grid-cols-2">
+          {% set name_error = field_errors.get('name') %}
+          <label class="flex flex-col gap-2">
+            <span class="text-white/70">Name</span>
+            <input type="text" name="name" autocomplete="name" placeholder="e.g. Alex Mercer" value="{{ form_data.get('name', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50{% if name_error %} border-rose-400/60 focus:border-rose-400 focus:ring-rose-400/40{% endif %}" {% if name_error %}aria-invalid="true"{% endif %} required />
+            {% if name_error %}<p class="text-xs text-rose-300">{{ name_error }}</p>{% endif %}
+          </label>
+          {% set phone_error = field_errors.get('phone') %}
+          <label class="flex flex-col gap-2">
+            <span class="text-white/70">Phone Number (Australian)</span>
+            <input type="tel" name="phone" autocomplete="tel" placeholder="e.g. +61 4XX XXX XXX" value="{{ form_data.get('phone', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50{% if phone_error %} border-rose-400/60 focus:border-rose-400 focus:ring-rose-400/40{% endif %}" {% if phone_error %}aria-invalid="true"{% endif %} required />
+            {% if phone_error %}<p class="text-xs text-rose-300">{{ phone_error }}</p>{% endif %}
+          </label>
+          {% set email_error = field_errors.get('email') %}
+          <label class="flex flex-col gap-2">
+            <span class="text-white/70">Email</span>
+            <input type="email" name="email" autocomplete="email" placeholder="traveler@skydesk.co" value="{{ form_data.get('email', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50{% if email_error %} border-rose-400/60 focus:border-rose-400 focus:ring-rose-400/40{% endif %}" {% if email_error %}aria-invalid="true"{% endif %} required />
+            {% if email_error %}<p class="text-xs text-rose-300">{{ email_error }}</p>{% endif %}
+          </label>
+          <label class="flex flex-col gap-2">
+            <span class="text-white/70">Destination</span>
+            <input type="text" name="destination" placeholder="e.g. Queenstown, New Zealand" value="{{ form_data.get('destination', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" />
+          </label>
         </div>
-        <div class="flex items-center justify-end gap-3">
-          <button type="submit"
-            class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/40 transition hover:bg-accent/90">
-            Save Lead
+
+        <fieldset class="space-y-4">
+          <legend class="text-xs uppercase tracking-[0.3em] text-white/50">Number of travellers</legend>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <label class="flex flex-col gap-2">
+              <span class="text-white/70">Adults</span>
+              <input type="number" name="travellers_adults" min="0" value="{{ form_data.get('travellers_adults', '1') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" />
+            </label>
+            <label class="flex flex-col gap-2">
+              <span class="text-white/70">Children</span>
+              <input type="number" name="travellers_children" min="0" value="{{ form_data.get('travellers_children', '0') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" />
+            </label>
+            <label class="flex flex-col gap-2">
+              <span class="text-white/70">Infants</span>
+              <input type="number" name="travellers_infants" min="0" value="{{ form_data.get('travellers_infants', '0') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="space-y-5">
+          <legend class="text-xs uppercase tracking-[0.3em] text-white/50">Travel dates</legend>
+          <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
+            <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+              {% set departure_error = field_errors.get('departure_date') %}
+              <div class="space-y-4">
+                <header class="flex items-center justify-between text-xs uppercase tracking-[0.25em] text-white/60">
+                  <span>Exact schedule</span>
+                  <span class="text-[0.6rem] text-white/40">Required</span>
+                </header>
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <label class="flex flex-col gap-2">
+                    <span class="text-white/70">Departure</span>
+                    <input type="date" name="departure_date" value="{{ form_data.get('departure_date', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50{% if departure_error %} border-rose-400/60 focus:border-rose-400 focus:ring-rose-400/40{% endif %}" {% if departure_error %}aria-invalid="true"{% endif %} />
+                    {% if departure_error %}<p class="text-xs text-rose-300">{{ departure_error }}</p>{% endif %}
+                  </label>
+                  {% set return_error = field_errors.get('return_date') %}
+                  <label class="flex flex-col gap-2">
+                    <span class="text-white/70">Return</span>
+                    <input type="date" name="return_date" value="{{ form_data.get('return_date', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50{% if return_error %} border-rose-400/60 focus:border-rose-400 focus:ring-rose-400/40{% endif %}" {% if return_error %}aria-invalid="true"{% endif %} />
+                    {% if return_error %}<p class="text-xs text-rose-300">{{ return_error }}</p>{% endif %}
+                  </label>
+                </div>
+              </div>
+
+              <div class="hidden h-full w-px bg-white/10 lg:block"></div>
+
+              <div class="space-y-4">
+                <header class="text-xs uppercase tracking-[0.25em] text-white/60">Flexible timing</header>
+                <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-end">
+                  <label class="flex flex-col gap-2">
+                    <span class="text-white/70">Month</span>
+                    <select name="flex_month_month" class="theme-select rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-left text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                      {% for value, label in month_options %}
+                      <option value="{{ value }}" {% if value == form_data.get('flex_month_month', '') %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-2 lg:w-28">
+                    <span class="text-white/70">Year</span>
+                    <select name="flex_month_year" class="theme-select rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-left text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                      <option value="">Year</option>
+                      {% for year in year_options %}
+                      <option value="{{ year }}" {% if year == form_data.get('flex_month_year', '') %}selected{% endif %}>{{ year }}</option>
+                      {% endfor %}
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-2 lg:w-24">
+                    <span class="text-white/70">Trip length</span>
+                    <input type="text" name="trip_length_value" inputmode="numeric" pattern="^\d*$" maxlength="3" value="{{ form_data.get('trip_length_value', '') }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" data-numeric-only />
+                  </label>
+                  <label class="flex flex-col gap-2 lg:w-28">
+                    <span class="text-white/70">Unit</span>
+                    <select name="trip_length_unit" class="theme-select rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-left text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                      <option value="days" {% if form_data.get('trip_length_unit', 'days') == 'days' %}selected{% endif %}>Days</option>
+                      <option value="weeks" {% if form_data.get('trip_length_unit') == 'weeks' %}selected{% endif %}>Weeks</option>
+                      <option value="months" {% if form_data.get('trip_length_unit') == 'months' %}selected{% endif %}>Months</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Notes</span>
+          <textarea name="notes" rows="4" placeholder="Capture preferences, special occasions, service level, and follow-up cues." class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">{{ form_data.get('notes', '') }}</textarea>
+        </label>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-6">
+          <a href="{{ url_for('dashboard') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+            <span aria-hidden="true" class="text-lg">&#8592;</span>
+            Back to dashboard
+          </a>
+          <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">
+            Submit enquiry
           </button>
         </div>
       </form>
-    </section>
+
+      <form method="post" enctype="multipart/form-data" class="record-panel {{ '' if is_quote_active else 'hidden ' }}space-y-8 text-sm text-white/80" data-panel-target="quote" aria-hidden="{{ 'false' if is_quote_active else 'true' }}">
+        <input type="hidden" name="record_type" value="quote" />
+        <p class="text-white/70">Attach the finalized quote PDF and add any context the sales desk should review before sending.</p>
+        <label class="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/15 bg-white/5 px-6 py-8 text-center transition hover:border-white/30 hover:bg-white/10">
+          <span class="text-sm font-semibold text-white">Upload quote PDF</span>
+          <span class="text-xs uppercase tracking-[0.3em] text-white/50">PDF only • 10MB max</span>
+          <input type="file" name="quote_pdf" accept="application/pdf" class="sr-only" />
+          <span class="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white/80">Choose file</span>
+        </label>
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Notes</span>
+          <textarea name="notes" rows="4" placeholder="Call out pricing nuances, upgrades, or approval holds." class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"></textarea>
+        </label>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-6">
+          <a href="{{ url_for('dashboard') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+            <span aria-hidden="true" class="text-lg">&#8592;</span>
+            Back to dashboard
+          </a>
+          <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">
+            Submit quote
+          </button>
+        </div>
+      </form>
+
+      <form method="post" enctype="multipart/form-data" class="record-panel {{ '' if is_booking_active else 'hidden ' }}space-y-8 text-sm text-white/80" data-panel-target="booking" aria-hidden="{{ 'false' if is_booking_active else 'true' }}">
+        <input type="hidden" name="record_type" value="booking" />
+        <p class="text-white/70">Drop in the confirmed booking pack so operations can stage documents and milestones.</p>
+        <label class="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/15 bg-white/5 px-6 py-8 text-center transition hover:border-white/30 hover:bg-white/10">
+          <span class="text-sm font-semibold text-white">Upload booking PDF</span>
+          <span class="text-xs uppercase tracking-[0.3em] text-white/50">PDF only • 10MB max</span>
+          <input type="file" name="booking_pdf" accept="application/pdf" class="sr-only" />
+          <span class="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white/80">Choose file</span>
+        </label>
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Notes</span>
+          <textarea name="notes" rows="4" placeholder="Add arrival logistics, VIP alerts, or payment checkpoints." class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"></textarea>
+        </label>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-6">
+          <a href="{{ url_for('dashboard') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+            <span aria-hidden="true" class="text-lg">&#8592;</span>
+            Back to dashboard
+          </a>
+          <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">
+            Submit booking
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
-  <div class="absolute left-0 bottom-0 p-4 sm:p-6">
-    <a href="{{ url_for('dashboard') }}" class="inline-flex items-center gap-2 rounded-full bg-accent/80 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-accent/40 backdrop-blur-xs transition hover:bg-accent">
-      <span aria-hidden="true" class="text-base">&larr;</span>
-      Back to Dashboard
-    </a>
-  </div>
+  <script>
+    (function () {
+      const card = document.querySelector('[data-record-card]');
+      if (!card) return;
+      const buttons = Array.from(card.querySelectorAll('[data-panel]'));
+      const panels = Array.from(card.querySelectorAll('[data-panel-target]'));
+      const splitClasses = (value) => (value || '').split(/\s+/).filter(Boolean);
+
+      const applyState = (button, isActive) => {
+        button.setAttribute('aria-pressed', String(isActive));
+        const activeClasses = splitClasses(button.dataset.active);
+        const inactiveClasses = splitClasses(button.dataset.inactive);
+        if (isActive) {
+          inactiveClasses.forEach((cls) => button.classList.remove(cls));
+          activeClasses.forEach((cls) => button.classList.add(cls));
+        } else {
+          activeClasses.forEach((cls) => button.classList.remove(cls));
+          inactiveClasses.forEach((cls) => button.classList.add(cls));
+        }
+      };
+
+      const activate = (target) => {
+        buttons.forEach((button) => applyState(button, button.dataset.panel === target));
+        panels.forEach((panel) => {
+          const isMatch = panel.dataset.panelTarget === target;
+          panel.classList.toggle('hidden', !isMatch);
+          panel.setAttribute('aria-hidden', String(!isMatch));
+        });
+      };
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => activate(button.dataset.panel));
+      });
+
+      const defaultTarget = buttons.find((button) => button.getAttribute('aria-pressed') === 'true')?.dataset.panel || buttons[0]?.dataset.panel;
+      if (defaultTarget) activate(defaultTarget);
+
+      card.querySelectorAll('[data-numeric-only]').forEach((input) => {
+        input.addEventListener('input', () => {
+          const cleaned = input.value.replace(/[^0-9]/g, '');
+          if (input.value !== cleaned) {
+            input.value = cleaned;
+          }
+        });
+      });
+
+    })();
+  </script>
 </div>
 {% endblock %}

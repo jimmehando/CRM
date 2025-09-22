@@ -1,0 +1,253 @@
+﻿{% extends "base.html" %}
+{% block title %}Confirm Quote - SkyDesk{% endblock %}
+{% block content %}
+{% set trip = payload.trip or {} %}
+{% set trip_dates = trip.dates or {} %}
+{% set other_pax = payload.other_pax or [] %}
+{% set accommodation = payload.accommodation or [] %}
+{% set flights = payload.flights or [] %}
+{% set services = payload.services or [] %}
+{% set totals = payload.totals or {} %}
+{% set grand_total = totals.grand_total or {} %}
+<div class="space-y-8">
+  <div class="space-y-2">
+    <p class="text-sm uppercase tracking-[0.3em] text-muted">Quote Intake</p>
+    <h1 class="text-3xl font-semibold">Review parsed quote</h1>
+    <p class="text-sm text-muted max-w-3xl">
+      We ingested <span class="text-white">{{ original_filename or 'uploaded.pdf' }}</span>. Adjust any fields below before saving.
+    </p>
+    <div aria-hidden="true" class="h-px w-full bg-white/10"></div>
+  </div>
+
+  {% if error_message %}
+    <div class="rounded-3xl border border-red-500/40 bg-red-500/15 p-4 text-sm text-red-100">
+      {{ error_message }}
+    </div>
+  {% endif %}
+
+  <form method="post" class="space-y-6">
+    <input type="hidden" name="other_pax_count" value="{{ other_pax|length }}">
+    <input type="hidden" name="accommodation_count" value="{{ accommodation|length }}">
+    <input type="hidden" name="flights_count" value="{{ flights|length }}">
+    <input type="hidden" name="services_count" value="{{ services|length }}">
+    <input type="hidden" name="grand_total_currency" value="{{ grand_total.currency or '' }}">
+    <input type="hidden" name="notes_field" value="{{ payload.notes or '' }}">
+
+    <section class="space-y-8 rounded-3xl border border-white/10 bg-white/5 p-6">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class="flex flex-col gap-2 text-sm text-white/70">
+          Lead ID
+          <input name="lead_id" value="{{ payload.lead_id or '' }}" maxlength="7" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" required>
+        </label>
+        <label class="flex flex-col gap-2 text-sm text-white/70">
+          Issued at (DD-MM-YYYY)
+          <input name="issued_at" value="{{ payload.issued_at or '' }}" placeholder="22-09-2025" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+        </label>
+      </div>
+
+      <label class="flex flex-col gap-2 text-sm text-white/70">
+        Client name
+        <input name="client_name" value="{{ payload.client.name if payload.client else '' }}" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+      </label>
+
+      <div class="space-y-4">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Trip Overview</h2>
+        <label class="flex flex-col gap-2 text-sm text-white/70">
+          Destinations (comma or newline)
+          <textarea name="trip_destinations" rows="2" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">{{ (trip.get('destinations') or trip.get('regions') or []) | join('\n') }}</textarea>
+        </label>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <label class="flex flex-col gap-2 text-sm text-white/70">
+            Start date (YYYY-MM-DD)
+            <input name="trip_start" value="{{ trip_dates.start or '' }}" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+          </label>
+          <label class="flex flex-col gap-2 text-sm text-white/70">
+            End date (YYYY-MM-DD)
+            <input name="trip_end" value="{{ trip_dates.end or '' }}" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+          </label>
+          <label class="flex flex-col gap-2 text-sm text-white/70">
+            Nights
+            <input name="trip_nights" value="{{ trip_dates.nights or '' }}" class="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+          </label>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Other Travellers</h2>
+        {% if other_pax %}
+          {% for pax in other_pax %}
+            <div class="grid gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 sm:grid-cols-2">
+              <label class="flex flex-col gap-2 text-xs text-white/70">
+                Name
+                <input name="other_pax-{{ loop.index0 }}-name" value="{{ pax.name or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+              <label class="flex flex-col gap-2 text-xs text-white/70">
+                Pax type (ADT/CNN/INF)
+                <input name="other_pax-{{ loop.index0 }}-pax_type" value="{{ pax.pax_type or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-xs text-white/60">No additional travellers detected.</p>
+        {% endif %}
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Accommodation</h2>
+        {% if accommodation %}
+          {% for stay in accommodation %}
+            <div class="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Property name
+                  <input name="accommodation-{{ loop.index0 }}-name" value="{{ stay.name or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Room type
+                  <input name="accommodation-{{ loop.index0 }}-room_type" value="{{ stay.room_type or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Check-in
+                  <input name="accommodation-{{ loop.index0 }}-check_in" value="{{ stay.check_in or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Check-out
+                  <input name="accommodation-{{ loop.index0 }}-check_out" value="{{ stay.check_out or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Nights
+                  <input name="accommodation-{{ loop.index0 }}-nights" value="{{ stay.nights if stay.nights is not none else '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Board
+                  <input name="accommodation-{{ loop.index0 }}-board" value="{{ stay.board or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Supplier reference
+                  <input name="accommodation-{{ loop.index0 }}-supplier_ref" value="{{ stay.supplier_ref or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-xs text-white/60">No accommodation detected.</p>
+        {% endif %}
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Flights</h2>
+        {% if flights %}
+          {% for flight in flights %}
+            <div class="space-y-3 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <div class="grid gap-3 sm:grid-cols-2">
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Carrier
+                  <input name="flights-{{ loop.index0 }}-carrier" value="{{ flight.carrier or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Route (e.g. BNE-LON)
+                  <input name="flights-{{ loop.index0 }}-route" value="{{ flight.route or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Origin
+                  <input name="flights-{{ loop.index0 }}-origin" value="{{ flight.origin or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  Destination
+                  <input name="flights-{{ loop.index0 }}-destination" value="{{ flight.destination or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+                <label class="flex flex-col gap-2 text-xs text-white/70">
+                  PNR / reference
+                  <input name="flights-{{ loop.index0 }}-pnr" value="{{ flight.pnr or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+                </label>
+              </div>
+              {% set segs = flight.segments or [] %}
+              {% set lays = flight.layovers or [] %}
+              <input type="hidden" name="flights-{{ loop.index0 }}-segments_json" value='{{ segs | tojson }}'>
+              <input type="hidden" name="flights-{{ loop.index0 }}-layovers_json" value='{{ lays | tojson }}'>
+              <div class="overflow-x-auto">
+                <table class="w-full text-xs text-white/80">
+                  <thead class="text-white/50">
+                    <tr>
+                      <th class="text-left py-1 pr-2">Carrier</th>
+                      <th class="text-left py-1 pr-2">Flight</th>
+                      <th class="text-left py-1 pr-2">From</th>
+                      <th class="text-left py-1 pr-2">To</th>
+                      <th class="text-left py-1 pr-2">Date</th>
+                      <th class="text-left py-1 pr-2">Dep</th>
+                      <th class="text-left py-1 pr-2">Arr</th>
+                      <th class="text-left py-1 pr-2">Class</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-white/10">
+                    {% for seg in segs %}
+                      <tr>
+                        <td class="py-1 pr-2">{{ seg.carrier or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.flight_number or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.origin or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.destination or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.depart_date or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.depart_time_local or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.arrive_time_local or '' }}</td>
+                        <td class="py-1 pr-2">{{ seg.booking_class or '' }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-xs text-white/60">No flights captured.</p>
+        {% endif %}
+      </div>
+
+      <div class="space-y-3">
+        <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Services</h2>
+        {% if services %}
+          {% for service in services %}
+            <div class="grid gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 xl:grid-cols-6">
+              <label class="flex flex-col gap-2 text-xs text-white/70 xl:col-span-2">
+                Type
+                <input name="services-{{ loop.index0 }}-type" value="{{ service.type or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+              <label class="flex flex-col gap-2 text-xs text-white/70 xl:col-span-2">
+                Description
+                <input name="services-{{ loop.index0 }}-description" value="{{ service.description or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+              <label class="flex flex-col gap-2 text-xs text-white/70">
+                Start date
+                <input name="services-{{ loop.index0 }}-depart_date" value="{{ service.depart_date or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+              <label class="flex flex-col gap-2 text-xs text-white/70">
+                End date
+                <input name="services-{{ loop.index0 }}-return_date" value="{{ service.return_date or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+              <label class="flex flex-col gap-2 text-xs text-white/70">
+                Supplier reference
+                <input name="services-{{ loop.index0 }}-supplier_ref" value="{{ service.supplier_ref or '' }}" class="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+              </label>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-xs text-white/60">No services captured.</p>
+        {% endif %}
+      </div>
+
+      <label class="flex flex-col gap-2 text-sm text-white/70">
+
+      <div class="flex justify-end">
+        <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">
+          Save quote
+        </button>
+      </div>
+    </section>
+  </form>
+</div>
+{% endblock %}
