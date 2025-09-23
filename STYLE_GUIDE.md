@@ -31,6 +31,18 @@
 - **Selects**: Add `.theme-select` class for dark dropdown menus (`rgba(10,11,15,0.97)` options, white text).
 - **Cards**: Use `.card` helper (semi-transparent background, subtle inner highlight) with 24px padding.
 
+## Tabs
+- Top tabs appear directly below the page header on detail pages.
+- Order: `Overview`, `Communication`, `Documents`.
+- Behavior: only one top panel visible at a time; smooth scroll to panel start on switch.
+- Accessibility: use `role="tablist"`, `aria-selected` on buttons, and clearly toggle hidden state.
+
+## Modals
+- Use full-screen overlay with `bg-black/60`; modal card is `rounded-3xl`, `border border-white/10`, `bg-bg`.
+- Title and helper text at top-left; “×” close control at top-right.
+- Primary submit at bottom-right as an accent pill.
+- Default focus moves to first interactive field when opened; overlay click and Escape close.
+
 ## Feedback Patterns
 - Success: Emerald accent overlay (`border-emerald-500/40`, `bg-emerald-500/10`).
 - Neutral info: Use `muted` text within translucent panels.
