@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from services.quote_ingest import QuoteDraft, process_quote_submission
 from services.booking_ingest import BookingDraft, process_booking_submission
 from services.llm_client import LLMNotConfigured
+from services.todo_ingest import process_todo_submission
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'skydesk-dev-secret')
@@ -348,7 +349,9 @@ def dashboard():
     recent_leads.sort(key=lambda lead: parse_sort_key(lead.get('submitted_at_value')), reverse=True)
     recent_leads = recent_leads[:6]
 
-    return render_template('dashboard.html', lead_totals=lead_totals, recent_leads=recent_leads)
+    active_todos = collect_active_todos(type_labels=type_labels)
+
+    return render_template('dashboard.html', lead_totals=lead_totals, recent_leads=recent_leads, active_todos=active_todos)
 
 
 @app.route('/leads/new', methods=['GET', 'POST'])
@@ -1000,6 +1003,98 @@ def lead_detail(record_type: str, record_id: str):
             )
             return 'log'
 
+        if form_type == 'todo_add':
+            text = (request.form.get('todo_text') or '').strip()
+            if not text:
+                return 'todo_add'
+
+            # Build inputs for LLM
+            lead_id_for_todo = record_id
+            if record_type in {'quote', 'booking'}:
+                lead_id_for_todo = record_id  # directory name is the 7-digit lead id
+            today_str = datetime.utcnow().strftime('%d-%m-%Y')
+
+            try:
+                todo = process_todo_submission(lead_id=lead_id_for_todo, today=today_str, text=text)
+            except LLMNotConfigured as exc:
+                # Fallback: store raw text locally without LLM enrichment
+                todos = payload.setdefault('todos', [])
+                todos.append(
+                    {
+                        'id': uuid4().hex,
+                        'text': text,
+                        'done': False,
+                        'created_at': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+                    }
+                )
+                flash(str(exc), 'error')
+                return 'todo_add'
+            except Exception as exc:  # pragma: no cover - external service dependent
+                flash(f'Unable to process task via assistant: {exc}', 'error')
+                return 'todo_add'
+
+            # Persist assistant output to a standalone JSON within the record directory
+            record_dir = get_record_directory(directory, record_id)
+            todos_index_path = record_dir / 'todos.json'
+            existing: Dict[str, Dict] = {}
+            try:
+                if todos_index_path.exists():
+                    with todos_index_path.open('r', encoding='utf-8') as handle:
+                        loaded = json.load(handle)
+                        if isinstance(loaded, dict):
+                            existing = loaded
+            except (OSError, json.JSONDecodeError):
+                existing = {}
+
+            next_idx = 1
+            if existing:
+                try:
+                    next_idx = max(int(k) for k in existing.keys() if str(k).isdigit()) + 1
+                except ValueError:
+                    next_idx = 1
+            entry_key = str(next_idx)
+            existing[entry_key] = {
+                'lead_id': todo.lead_id,
+                'task': todo.task,
+                'date_to_be_done': todo.date_to_be_done,
+            }
+            try:
+                with todos_index_path.open('w', encoding='utf-8') as handle:
+                    json.dump(existing, handle, indent=2)
+            except OSError:
+                flash('Could not save the To Do index file.', 'error')
+
+            # Also reflect in inline payload for UI convenience
+            todos = payload.setdefault('todos', [])
+            todos.append(
+                {
+                    'id': uuid4().hex,
+                    'text': todo.task,
+                    'due_date': todo.date_to_be_done or None,
+                    'done': False,
+                    'created_at': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+                }
+            )
+
+            return 'todo_add'
+
+        if form_type == 'todo_toggle':
+            todo_id = (request.form.get('todo_id') or '').strip()
+            desired_str = (request.form.get('done') or '').strip().lower()
+            desired = True if desired_str in {'1', 'true', 'yes', 'on'} else False
+            todos = payload.setdefault('todos', [])
+            for item in todos:
+                if isinstance(item, dict) and item.get('id') == todo_id:
+                    item['done'] = desired
+                    break
+            return 'todo_toggle'
+
+        if form_type == 'todo_delete':
+            todo_id = (request.form.get('todo_id') or '').strip()
+            todos = payload.setdefault('todos', [])
+            payload['todos'] = [item for item in todos if not (isinstance(item, dict) and item.get('id') == todo_id)]
+            return 'todo_delete'
+
         return None
 
     if record_type in {'enquiry', 'quote', 'booking'} and request.method == 'POST':
@@ -1015,6 +1110,12 @@ def lead_detail(record_type: str, record_id: str):
                     flash('Notes saved to the SkyDesk archive.', 'success')
                 elif update_kind == 'log':
                     flash('Communication log updated for this lead.', 'success')
+                elif update_kind == 'todo_add':
+                    flash('To Do added to this lead.', 'success')
+                elif update_kind == 'todo_toggle':
+                    flash('To Do updated for this lead.', 'success')
+                elif update_kind == 'todo_delete':
+                    flash('To Do removed from this lead.', 'success')
         return redirect(url_for('lead_detail', record_type=record_type, record_id=record_id))
 
     communications_display = build_communication_entries(payload.get('communications', []))
@@ -1115,6 +1216,7 @@ def lead_detail(record_type: str, record_id: str):
         'flex_month': schedule.get('flex_month'),
         'trip_length_display': trip_length_display,
         'notes': payload.get('notes') or '',
+        'todos': payload.get('todos') or [],
     }
 
     return render_template(
@@ -1201,6 +1303,67 @@ def build_communication_entries(raw_entries) -> List[dict]:
         item.pop('_sort_key', None)
 
     return prepared
+
+
+def collect_active_todos(*, type_labels: Dict[str, str]) -> List[dict]:
+    """Scan all records and collect active (not done) To Dos for dashboard display."""
+    results: List[dict] = []
+
+    def _parse_due(value: Optional[str]) -> datetime:
+        if not value:
+            return datetime.max
+        for fmt in ('%d-%m-%Y', '%Y-%m-%d'):
+            try:
+                return datetime.strptime(value, fmt)
+            except ValueError:
+                continue
+        return datetime.max
+
+    for record_type, directory in LEAD_DIRECTORIES.items():
+        if not directory.exists():
+            continue
+        for record_dir in directory.iterdir():
+            if not record_dir.is_dir():
+                continue
+            payload_path = record_dir / RECORD_FILENAME
+            if not payload_path.exists():
+                continue
+            try:
+                with payload_path.open('r', encoding='utf-8') as handle:
+                    payload = json.load(handle)
+            except (OSError, json.JSONDecodeError):
+                continue
+
+            todos = payload.get('todos') or []
+            if not isinstance(todos, list):
+                continue
+            name_display = payload.get('name') or (payload.get('client') or {}).get('name') or 'N/A'
+            for item in todos:
+                if not isinstance(item, dict):
+                    continue
+                if item.get('done') is True:
+                    continue
+                text = (item.get('text') or '').strip()
+                if not text:
+                    continue
+                due = (item.get('due_date') or '').strip()
+                results.append(
+                    {
+                        'record_id': record_dir.name,
+                        'record_type': record_type,
+                        'type_label': type_labels.get(record_type, record_type.title()),
+                        'text': text,
+                        'due_display': due or None,
+                        'due_sort': _parse_due(due),
+                        'name_display': name_display,
+                        'detail_url': url_for('lead_detail', record_type=record_type, record_id=record_dir.name),
+                    }
+                )
+
+    results.sort(key=lambda x: (x['due_sort'], x['type_label'], x['name_display'].lower()))
+    for item in results:
+        item.pop('due_sort', None)
+    return results
 
 
 def generate_record_id() -> str:
