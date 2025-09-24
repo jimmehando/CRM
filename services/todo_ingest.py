@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -71,6 +73,63 @@ def process_todo_submission(*, lead_id: str, today: str, text: str) -> TodoItem:
     # Basic shape validation; tolerate minor casing/spacing issues
     lead = str(parsed.get('lead_id') or lead_id)
     task = str(parsed.get('task') or text).strip()
-    due = str(parsed.get('date_to_be_done') or '').strip()
+    raw_due = str(parsed.get('date_to_be_done') or '').strip()
+    due = _normalise_due_date(raw_due)
     return TodoItem(lead_id=lead, task=task, date_to_be_done=due)
 
+
+def _normalise_due_date(value: str) -> str:
+    """Best-effort normaliser to DD-MM-YYYY.
+
+    Accepts common variants like:
+    - DD-MM-YYYY, YYYY-MM-DD
+    - DD/MM/YYYY, YYYY/MM/DD
+    - MM/YYYY or M/YYYY (assumes day 01)
+    - Month YYYY or 'Month of YYYY' (assumes day 01)
+    Returns an empty string when the date cannot be parsed.
+    """
+    if not value:
+        return ''
+
+    s = value.strip()
+
+    # Replace slashes with dashes for simpler matching later
+    s2 = s.replace('/', '-')
+
+    # 1) Direct parse with common formats
+    for fmt_in in ('%d-%m-%Y', '%Y-%m-%d'):
+        try:
+            dt = datetime.strptime(s2, fmt_in)
+            return dt.strftime('%d-%m-%Y')
+        except ValueError:
+            pass
+
+    # 2) DD/MM/YYYY or YYYY/MM/DD (original s)
+    for fmt_in in ('%d/%m/%Y', '%Y/%m/%d'):
+        try:
+            dt = datetime.strptime(s, fmt_in)
+            return dt.strftime('%d-%m-%Y')
+        except ValueError:
+            pass
+
+    # 3) MM-YYYY (or M-YYYY)
+    m = re.fullmatch(r'(\d{1,2})[-/](\d{4})', s)
+    if m:
+        month = int(m.group(1))
+        year = int(m.group(2))
+        if 1 <= month <= 12:
+            return f"01-{month:02d}-{year:04d}"
+
+    # 4) Month words like "May 2027" or "May of 2027"
+    months = {
+        'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+        'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+    }
+    word_match = re.search(r'(january|february|march|april|may|june|july|august|september|october|november|december)\s*(?:of\s*)?(\d{4})', s, flags=re.IGNORECASE)
+    if word_match:
+        month = months[word_match.group(1).lower()]
+        year = int(word_match.group(2))
+        return f"01-{month:02d}-{year:04d}"
+
+    # If unknown, return as-is (may still display but won’t sort well)
+    return s

@@ -24,48 +24,7 @@
     </div>
   </div>
 
-  <div class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-black/30">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p class="text-sm uppercase tracking-[0.3em] text-muted">Team tasks</p>
-        <h2 class="mt-1 text-2xl font-semibold">Active to-dos</h2>
-      </div>
-      <a href="{{ url_for('leads') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
-        Open archive
-      </a>
-    </div>
-
-    <div class="mt-6">
-      {% if active_todos %}
-        <ul role="list" class="divide-y divide-white/10">
-          {% for item in active_todos %}
-            <li>
-              <a href="{{ item.detail_url }}" class="group flex flex-col gap-3 py-4 transition hover:bg-white/5 rounded-2xl px-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="flex flex-wrap items-center gap-3">
-                    <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/70">{{ item.type_label }}</span>
-                    <span class="text-lg font-semibold text-white">{{ item.text }}</span>
-                  </div>
-                  {% if item.due_display %}
-                    <span class="text-sm text-white/60">Due {{ item.due_display }}</span>
-                  {% else %}
-                    <span class="text-sm text-white/40">No due date</span>
-                  {% endif %}
-                </div>
-                <div class="flex flex-wrap items-center gap-4 text-sm text-white/70">
-                  <span class="inline-flex items-center gap-2"><span class="inline-block h-2 w-2 rounded-full bg-accent"></span>{{ item.name_display }}</span>
-                </div>
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="rounded-2xl border border-white/10 bg-black/20 px-6 py-10 text-center text-sm text-muted">
-          No active to-dos. You’re all caught up.
-        </div>
-      {% endif %}
-    </div>
-  </div>
+  {# Active To-Dos moved below KPI cards #}
 
   {% with flashes = get_flashed_messages(with_categories=true) %}
     {% if flashes %}
@@ -106,7 +65,71 @@
   <div class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-black/30">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-sm uppercase tracking-[0.3em] text-muted">Recent activity</p>
+        <h2 class="mt-1 text-2xl font-semibold">Active to-dos</h2>
+      </div>
+      {% if (active_todos_more or 0) > 0 %}
+        <a href="{{ url_for('todos') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+          View more ({{ active_todos_more }})
+        </a>
+      {% else %}
+        <a href="{{ url_for('todos') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+          View all
+        </a>
+      {% endif %}
+    </div>
+
+    <div class="mt-6">
+      {% if active_todos %}
+        <ul role="list" class="divide-y divide-white/10">
+          {% for item in active_todos %}
+            <li>
+              <div class="group flex flex-col gap-3 py-4 transition hover:bg-white/5 rounded-2xl px-4">
+                <a href="{{ item.detail_url }}" class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] {{ 'border-amber-400 bg-amber-500/35 text-amber-100' if item.record_type == 'enquiry' else ('border-blue-400 bg-blue-500/35 text-blue-100' if item.record_type == 'quote' else 'border-emerald-400 bg-emerald-500/45 text-emerald-100') }}">{{ item.type_label }}</span>
+                    <span class="text-lg font-semibold text-white">{{ item.text }}</span>
+                  </div>
+                  {% if item.due_display %}
+                    <span class="text-sm text-white/60">Due {{ item.due_display }}</span>
+                  {% else %}
+                    <span class="text-sm text-white/40">No due date</span>
+                  {% endif %}
+                </a>
+                <div class="flex items-center justify-between">
+                  <div class="flex flex-wrap items-center gap-4 text-sm text-white/70">
+                    <span class="inline-flex items-center gap-2"><span class="inline-block h-2 w-2 rounded-full bg-accent"></span>{{ item.name_display }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <form method="post" action="{{ url_for('lead_detail', record_type=item.record_type, record_id=item.record_id) }}">
+                      <input type="hidden" name="form_type" value="todo_toggle">
+                      <input type="hidden" name="todo_id" value="{{ item.todo_id }}">
+                      <input type="hidden" name="done" value="true">
+                      <input type="hidden" name="next" value="{{ url_for('dashboard') }}">
+                      <button type="submit" class="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white">Mark done</button>
+                    </form>
+                    <form method="post" action="{{ url_for('lead_detail', record_type=item.record_type, record_id=item.record_id) }}">
+                      <input type="hidden" name="form_type" value="todo_delete">
+                      <input type="hidden" name="todo_id" value="{{ item.todo_id }}">
+                      <input type="hidden" name="next" value="{{ url_for('dashboard') }}">
+                      <button type="submit" class="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white">Delete</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="rounded-2xl border border-white/10 bg-black/20 px-6 py-10 text-center text-sm text-muted">
+          No active to-dos. You’re all caught up.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-black/30">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
         <h2 class="mt-1 text-2xl font-semibold">Latest leads</h2>
       </div>
       <a href="{{ url_for('leads') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
@@ -122,7 +145,7 @@
               <a href="{{ lead.detail_url }}" class="group flex flex-col gap-3 py-4 transition hover:bg-white/5 rounded-2xl px-4">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div class="flex flex-wrap items-center gap-3">
-                    <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/70">{{ lead.type_label }}</span>
+                    <span class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] {{ 'border-amber-400 bg-amber-500/35 text-amber-100' if lead.record_type == 'enquiry' else ('border-blue-400 bg-blue-500/35 text-blue-100' if lead.record_type == 'quote' else 'border-emerald-400 bg-emerald-500/45 text-emerald-100') }}">{{ lead.type_label }}</span>
                     <span class="text-lg font-semibold text-white">{{ lead.name_display }}</span>
                   </div>
                   <span class="text-sm text-white/60">{{ lead.submitted_at_display }}</span>
@@ -161,5 +184,3 @@
   })();
 </script>
 {% endblock %}
-
-

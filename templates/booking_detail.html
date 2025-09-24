@@ -398,17 +398,22 @@
   // (removed: early modal binder ran before modal existed)
 </script>
 
-<div id="communication-modal" class="fixed inset-0 z-50 hidden">
+<div id="communication-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="comm-modal-title">
   <div data-modal-overlay class="flex h-full w-full items-center justify-center bg-black/60 p-4">
     <div class="w-full max-w-xl rounded-3xl border border-white/10 bg-bg p-6 text-sm text-white shadow-2xl shadow-black/40">
       <div class="flex items-start justify-between">
         <div>
-          <h3 class="text-base font-semibold">Log new touchpoint</h3>
+          <h3 id="comm-modal-title" class="text-base font-semibold">Log new touchpoint</h3>
           <p class="mt-1 text-xs text-white/60">Capture who, how, and what was discussed.</p>
         </div>
         <button type="button" data-close-comm-modal class="rounded-full border border-white/10 px-3 py-1 text-xs text-white/70 transition hover:border-white/30 hover:text-white" aria-label="Close">&times;</button>
       </div>
-      <form class="mt-5 space-y-4" onsubmit="event.preventDefault();">
+      <form method="post" class="mt-5 space-y-4">
+        <input type="hidden" name="form_type" value="log">
+        <label class="flex flex-col gap-2">
+          <span class="text-white/70">Date &amp; time</span>
+          <input type="datetime-local" name="log_timestamp" value="{{ default_timestamp }}" class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50" required>
+        </label>
         <fieldset class="space-y-2">
           <legend class="text-white/70">Who</legend>
           <div class="flex gap-4">
@@ -424,16 +429,27 @@
         </fieldset>
         <label class="flex flex-col gap-2">
           <span class="text-white/70">Method</span>
-          <select class="theme-select rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-left text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
+          <select name="log_method" class="theme-select rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-left text-white focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">
             <option>F2F</option>
             <option>Phone</option>
             <option>Text</option>
             <option>Email</option>
           </select>
         </label>
+        <fieldset class="flex flex-wrap items-center gap-4">
+          <legend class="text-white/70">Direction</legend>
+          <label class="inline-flex items-center gap-2 text-white/80">
+            <input type="radio" name="log_direction" value="incoming" checked class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
+            Incoming
+          </label>
+          <label class="inline-flex items-center gap-2 text-white/80">
+            <input type="radio" name="log_direction" value="outgoing" class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
+            Outgoing
+          </label>
+        </fieldset>
         <label class="flex flex-col gap-2">
           <span class="text-white/70">Message</span>
-          <textarea rows="5" placeholder="Write a short summary of the interaction." class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"></textarea>
+          <textarea name="log_body" rows="5" placeholder="Write a short summary of the interaction." class="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"></textarea>
         </label>
         <div class="flex justify-end">
           <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90">Submit</button>
@@ -500,10 +516,22 @@
         }
       }
     }
+    function hashToTab(hash) {
+      var key = (hash || '').replace('#', '').trim().toLowerCase();
+      return ['overview','communication','documents'].indexOf(key) !== -1 ? key : 'overview';
+    }
+    function syncHash(target) {
+      try { history.replaceState(null, '', '#' + target); } catch (e) { location.hash = target; }
+    }
     btns.forEach(function (b) {
-      b.addEventListener('click', function () { setTopActive(b.getAttribute('data-top-tab')); });
+      b.addEventListener('click', function () {
+        var t = b.getAttribute('data-top-tab');
+        setTopActive(t);
+        syncHash(t);
+      });
     });
-    setTopActive('overview');
+    var initial = hashToTab(location.hash);
+    setTopActive(initial);
   })();
   (function () {
     const card = document.querySelector('aside [data-tab-card]');

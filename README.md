@@ -9,6 +9,8 @@ SkyDesk is a dark, sleek Flask app for capturing enquiries, ingesting quotes/boo
 - Detail pages with top tabs (Overview • Communication • Documents)
 - To‑Do panel per lead; Add/Toggle/Delete with due badges
 - Communication log and a friendly “Log new touchpoint” modal
+- Per‑lead document uploads (any file type, up to 10MB)
+- Color‑coded lead types and consistent hover cards for quick scanning
 
 ## Quickstart
 ```bash
@@ -32,11 +34,19 @@ OPENAI_TEMPERATURE=0         # optional
 ```
 leads/
   enquiry/<id>/record.json
+  enquiry/<id>/communications.json   # touchpoint log (dict index)
+  enquiry/<id>/todos.json            # authoritative To‑Dos (dict index)
+  enquiry/<id>/documents/<file>
   quote/<lead_id>/record.json
   quote/<lead_id>/metadata.json
   quote/<lead_id>/documents/<original.pdf>
-  quote/<lead_id>/todos.json           # assistant-generated To‑Dos index
-  booking/<lead_id>/...                # mirrors quote structure
+  quote/<lead_id>/communications.json
+  quote/<lead_id>/todos.json
+  booking/<lead_id>/record.json
+  booking/<lead_id>/metadata.json
+  booking/<lead_id>/documents/<file>
+  booking/<lead_id>/communications.json
+  booking/<lead_id>/todos.json
 tmp/
   quote_drafts/<draft_id>/{draft.json, source.pdf}
   booking_drafts/<draft_id>/{draft.json, source.pdf}
@@ -49,5 +59,6 @@ tmp/
 - Snapshot tests for key JSON structures
 
 ## Notes
-- Large uploads: consider setting `app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024` (10MB)
+- Uploads: app enforces `MAX_CONTENT_LENGTH = 10MB`
 - Security: CSRF is not enabled; add if exposing publicly
+- Active To‑Dos list caps at 5 on the dashboard; view all at `/todos`

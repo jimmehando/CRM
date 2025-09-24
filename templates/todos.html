@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}All To‑Dos — SkyDesk{% endblock %}
+{% block content %}
+{% set items = items or [] %}
+<div class="space-y-8">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-sm uppercase tracking-[0.3em] text-muted">Team tasks</p>
+      <h1 class="text-3xl font-semibold">All Active To‑Dos</h1>
+      <p class="mt-2 text-sm text-muted">Sorted by due date; click any item to open the related lead.</p>
+    </div>
+    <a href="{{ url_for('dashboard') }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2 text-sm font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+      <span aria-hidden="true">&#8592;</span>
+      Back to dashboard
+    </a>
+  </div>
+
+  <div class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-lg shadow-black/30">
+    {% if items %}
+      <ul role="list" class="divide-y divide-white/10">
+        {% for item in items %}
+          <li>
+            <a href="{{ item.detail_url }}" class="group flex flex-col gap-3 py-4 transition hover:bg-white/5 rounded-2xl px-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                  <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/70">{{ item.type_label }}</span>
+                  <span class="text-lg font-semibold text-white">{{ item.text }}</span>
+                </div>
+                {% if item.due_display %}
+                  <span class="text-sm text-white/60">Due {{ item.due_display }}</span>
+                {% else %}
+                  <span class="text-sm text-white/40">No due date</span>
+                {% endif %}
+              </div>
+              <div class="flex flex-wrap items-center gap-4 text-sm text-white/70">
+                <span class="inline-flex items-center gap-2"><span class="inline-block h-2 w-2 rounded-full bg-accent"></span>{{ item.name_display }}</span>
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="rounded-2xl border border-white/10 bg-black/20 px-6 py-10 text-center text-sm text-muted">
+        No active to‑dos found.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

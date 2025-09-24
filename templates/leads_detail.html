@@ -81,14 +81,21 @@
             <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Communication Log</h2>
             <p class="mt-2 text-xs text-white/60">Incoming and outgoing touchpoints captured in chronological order.</p>
           </div>
-          <button type="button" data-open-comm-modal class="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
-            + New entry
-          </button>
+          <div class="flex items-center gap-2">
+            <label class="hidden sm:block text-xs text-white/60">Sort</label>
+            <select data-comm-sort class="theme-select rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-left text-white/80 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50 text-xs">
+              <option value="desc" selected>Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+            <button type="button" data-open-comm-modal class="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white">
+              + New entry
+            </button>
+          </div>
         </div>
-        <div class="space-y-4">
+        <div class="space-y-4" data-comm-list>
           {% if communications %}
             {% for entry in communications %}
-              <article class="rounded-2xl border border-white/10 bg-white/10 p-4 shadow-sm shadow-black/20">
+              <article class="rounded-2xl border border-white/10 bg-white/10 p-4 shadow-sm shadow-black/20" data-ts="{{ entry.sort_ts }}" data-seq="{{ entry.seq }}">
                 <header class="flex flex-wrap items-center gap-2 text-xs text-white/70">
                   <span class="inline-flex items-center gap-2 rounded-full px-2 py-0.5 {{ entry.badge_class }}">{{ entry.badge_text }}</span>
                   <span>{{ entry.timestamp_display }}</span>
@@ -163,6 +170,34 @@
   </div>
 
   <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80">
+    <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Documents</h2>
+    <form method="post" enctype="multipart/form-data" class="mt-4 flex flex-wrap items-center gap-3">
+      <input type="hidden" name="form_type" value="document_upload">
+      <label class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 text-white/80">
+        <span class="text-xs">Choose file</span>
+        <input type="file" name="document_file" accept="*/*" class="hidden" onchange="this.nextElementSibling && (this.nextElementSibling.textContent = this.files[0]?.name || 'Choose file')">
+        <span class="text-xs text-white/60">No file selected</span>
+      </label>
+      <button type="submit" class="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:text-white">Upload</button>
+      <span class="text-xs text-white/50">Any file type • up to 10MB</span>
+    </form>
+    {% if documents %}
+      <ul class="mt-4 space-y-2">
+        {% for filename in documents %}
+          <li>
+            <a href="{{ url_for('enquiry_document', record_id=lead.record_id, filename=filename) }}" class="inline-flex items-center gap-2 text-accent hover:text-accent/80">
+              <span aria-hidden="true" class="text-base">&#128196;</span>
+              {{ filename }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="mt-4 text-xs text-white/60">No documents uploaded yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-white/80">
     <h2 class="text-xs uppercase tracking-[0.3em] text-white/50">Notes</h2>
     <form method="post" class="mt-4 space-y-4">
       <textarea name="notes" rows="6" placeholder="Add context, preferences, or follow-up actions." class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-white/40 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50">{{ lead.notes | e }}</textarea>
@@ -207,16 +242,18 @@
             <option>Other</option>
           </select>
         </label>
-        <fieldset class="flex flex-wrap items-center gap-4">
-          <legend class="text-white/70">Direction</legend>
-          <label class="inline-flex items-center gap-2 text-white/80">
-            <input type="radio" name="log_direction" value="incoming" checked class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
-            Incoming
-          </label>
-          <label class="inline-flex items-center gap-2 text-white/80">
-            <input type="radio" name="log_direction" value="outgoing" class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
-            Outgoing
-          </label>
+        <fieldset class="space-y-2">
+          <legend class="text-white/70">Who</legend>
+          <div class="flex gap-4">
+            <label class="inline-flex items-center gap-2 text-white/80">
+              <input type="radio" name="actor" value="Consultant" checked class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
+              Consultant
+            </label>
+            <label class="inline-flex items-center gap-2 text-white/80">
+              <input type="radio" name="actor" value="Customer" class="h-4 w-4 rounded-full border-white/20 bg-white/10 text-accent focus:ring-accent">
+              Customer
+            </label>
+          </div>
         </fieldset>
         <label class="flex flex-col gap-2">
           <span class="text-white/70">Summary</span>
@@ -232,32 +269,47 @@
 </div>
 
 <script>
-  (function () {\n    const existingToastInit = true;\n    const modal = document.getElementById('communication-modal');
-    const openButton = document.querySelector('[data-open-comm-modal]');
-    const closeButtons = modal ? modal.querySelectorAll('[data-close-comm-modal]') : [];
+  (function () {
+    var modal = document.getElementById('communication-modal');
+    var openButton = document.querySelector('[data-open-comm-modal]');
+    var closeButtons = modal ? modal.querySelectorAll('[data-close-comm-modal]') : [];
 
     if (!modal || !openButton) return;
 
-    const toggleModal = (show) => {
+    function nowLocalForInput() {
+      var d = new Date();
+      var pad = function(n){return (n<10?'0':'')+n};
+      var yyyy = d.getFullYear();
+      var mm = pad(d.getMonth()+1);
+      var dd = pad(d.getDate());
+      var hh = pad(d.getHours());
+      var min = pad(d.getMinutes());
+      return yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + min;
+    }
+    function toggleModal(show) {
       modal.classList.toggle('hidden', !show);
       if (show) {
-        const firstField = modal.querySelector('input[name="log_timestamp"]');
-        firstField?.focus();
+        var dt = modal.querySelector('input[name="log_timestamp"]');
+        if (dt) { try { dt.value = nowLocalForInput(); } catch (e) {} }
+        var firstField = modal.querySelector('input[name="log_timestamp"]');
+        try { firstField && firstField.focus(); } catch (e) {}
       } else {
-        openButton.focus();
+        try { openButton.focus(); } catch (e) {}
       }
-    };
+    }
 
-    openButton.addEventListener('click', () => toggleModal(true));
-    closeButtons.forEach((btn) => btn.addEventListener('click', () => toggleModal(false)));
+    openButton.addEventListener('click', function () { toggleModal(true); });
+    Array.prototype.forEach.call(closeButtons, function (btn) {
+      btn.addEventListener('click', function () { toggleModal(false); });
+    });
 
-    modal.addEventListener('click', (event) => {
+    modal.addEventListener('click', function (event) {
       if (event.target === modal || event.target.hasAttribute('data-modal-overlay')) {
         toggleModal(false);
       }
     });
 
-    document.addEventListener('keydown', (event) => {
+    document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
         toggleModal(false);
       }
@@ -265,17 +317,75 @@
   })();
 
   (function () {
-    const toasts = Array.from(document.querySelectorAll('[data-toast]'));
-    toasts.forEach((toast, index) => {
-      const dismiss = toast.querySelector('[data-dismiss-toast]');
-      const hide = () => {
+    var toasts = Array.prototype.slice.call(document.querySelectorAll('[data-toast]'));
+    toasts.forEach(function (toast, index) {
+      var dismiss = toast.querySelector('[data-dismiss-toast]');
+      function hide() {
         toast.classList.add('opacity-0', 'translate-y-1');
-        setTimeout(() => toast.remove(), 250);
-      };
+        setTimeout(function () { toast.remove(); }, 250);
+      }
       if (dismiss) {
         dismiss.addEventListener('click', hide);
       }
       setTimeout(hide, 6000 + index * 400);
+    });
+  })();
+</script>
+
+<script>
+  // Communications sorting (Newest/Oldest)
+  (function () {
+    var list = document.querySelector('[data-comm-list]');
+    var select = document.querySelector('[data-comm-sort]');
+    if (!list || !select) return;
+    function sort(dir) {
+      var items = Array.prototype.slice.call(list.children).filter(function (el) { return el.matches('article'); });
+      items.sort(function (a, b) {
+        var ta = Date.parse(a.getAttribute('data-ts') || '') || 0;
+        var tb = Date.parse(b.getAttribute('data-ts') || '') || 0;
+        if (ta === tb) {
+          var sa = parseInt(a.getAttribute('data-seq') || '0', 10) || 0;
+          var sb = parseInt(b.getAttribute('data-seq') || '0', 10) || 0;
+          return dir === 'asc' ? sa - sb : sb - sa;
+        }
+        return dir === 'asc' ? ta - tb : tb - ta;
+      });
+      items.forEach(function (el) { list.appendChild(el); });
+    }
+    select.addEventListener('change', function () { sort(select.value); });
+    sort(select.value || 'desc');
+  })();
+</script>
+
+<script>
+  // To‑Do: include client local timestamp on submit
+  (function () {
+    function nowLocalISO() {
+      var d = new Date();
+      var pad = function(n){return (n<10?'0':'')+n};
+      var yyyy = d.getFullYear();
+      var mm = pad(d.getMonth()+1);
+      var dd = pad(d.getDate());
+      var hh = pad(d.getHours());
+      var min = pad(d.getMinutes());
+      var ss = pad(d.getSeconds());
+      return yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + min + ':' + ss;
+    }
+    var forms = Array.prototype.slice.call(document.querySelectorAll('form'));
+    forms.forEach(function (f) {
+      var ft = f.querySelector('input[name="form_type"]');
+      if (ft && ft.value === 'todo_add') {
+        f.addEventListener('submit', function () {
+          var hidden = f.querySelector('input[name="client_now"]');
+          if (!hidden) {
+            hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'client_now';
+            f.appendChild(hidden);
+          }
+          hidden.value = nowLocalISO();
+        });
+      }
     });
   })();
 </script>

@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from flask import Flask, render_template, request, redirect, url_for, abort, send_file, flash
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from services.quote_ingest import QuoteDraft, process_quote_submission
 from services.booking_ingest import BookingDraft, process_booking_submission
@@ -17,6 +18,8 @@ from services.todo_ingest import process_todo_submission
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'skydesk-dev-secret')
+# Cap upload size to 10MB as per UI copy and README guidance
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
 BASE_DIR = Path(__file__).resolve().parent
 ENQUIRY_DIR = BASE_DIR / 'leads' / 'enquiry'
@@ -29,6 +32,8 @@ LEAD_DIRECTORIES = {
 }
 
 RECORD_FILENAME = 'record.json'
+COMMUNICATIONS_FILENAME = 'communications.json'
+TODOS_FILENAME = 'todos.json'
 
 TMP_DIR = BASE_DIR / 'tmp'
 QUOTE_DRAFT_DIR = TMP_DIR / 'quote_drafts'
@@ -41,6 +46,23 @@ def get_record_payload_path(directory: Path, record_id: str) -> Path:
 
 def get_record_directory(directory: Path, record_id: str) -> Path:
     return directory / record_id
+
+
+def _load_json_object(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        with path.open('r', encoding='utf-8') as h:
+            data = json.load(h)
+            return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_json_object(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('w', encoding='utf-8') as h:
+        json.dump(data, h, indent=2)
 
 
 def quote_draft_paths(draft_id: str) -> Tuple[Path, Path, Path]:
@@ -349,9 +371,11 @@ def dashboard():
     recent_leads.sort(key=lambda lead: parse_sort_key(lead.get('submitted_at_value')), reverse=True)
     recent_leads = recent_leads[:6]
 
-    active_todos = collect_active_todos(type_labels=type_labels)
+    all_todos = collect_active_todos(type_labels=type_labels)
+    active_todos = all_todos[:5]
+    more_count = max(len(all_todos) - len(active_todos), 0)
 
-    return render_template('dashboard.html', lead_totals=lead_totals, recent_leads=recent_leads, active_todos=active_todos)
+    return render_template('dashboard.html', lead_totals=lead_totals, recent_leads=recent_leads, active_todos=active_todos, active_todos_more=more_count)
 
 
 @app.route('/leads/new', methods=['GET', 'POST'])
@@ -578,6 +602,17 @@ def leads():
     requested_type = (request.args.get('record_type') or 'enquiry').strip().lower()
     active_record_type = requested_type if requested_type in LEAD_DIRECTORIES else 'enquiry'
     return render_template('leads.html', leads_by_type=leads_by_type, active_record_type=active_record_type)
+
+
+@app.route('/todos')
+def todos():
+    type_labels = {
+        'enquiry': 'Enquiry',
+        'quote': 'Quote',
+        'booking': 'Booking',
+    }
+    items = collect_active_todos(type_labels=type_labels)
+    return render_template('todos.html', items=items)
 
 
 @app.route('/leads/quote/confirm/<draft_id>', methods=['GET', 'POST'])
@@ -956,6 +991,15 @@ def booking_document(record_id: str, filename: str):
     return send_file(file_path, mimetype='application/pdf', download_name=file_path.name)
 
 
+@app.route('/leads/enquiry/<record_id>/document/<path:filename>')
+def enquiry_document(record_id: str, filename: str):
+    directory = (get_record_directory(ENQUIRY_DIR, record_id) / 'documents').resolve()
+    file_path = (directory / filename).resolve()
+    if not str(file_path).startswith(str(directory)) or not file_path.exists():
+        abort(404)
+    # Best-effort content type; let browser infer. Use octet-stream for safety.
+    return send_file(file_path, mimetype='application/octet-stream', download_name=file_path.name)
+
 @app.route('/leads/<record_type>/<record_id>', methods=['GET', 'POST'])
 def lead_detail(record_type: str, record_id: str):
     record_type = record_type.lower()
@@ -974,6 +1018,8 @@ def lead_detail(record_type: str, record_id: str):
         abort(404)
 
     default_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M')
+    record_dir = get_record_directory(directory, record_id)
+    record_dir = get_record_directory(directory, record_id)
 
     def apply_journal_update() -> Optional[str]:
         form_type = request.form.get('form_type', 'notes')
@@ -983,24 +1029,30 @@ def lead_detail(record_type: str, record_id: str):
             return 'notes'
 
         if form_type == 'log':
-            communications = payload.setdefault('communications', [])
-            timestamp_input = request.form.get('log_timestamp') or ''
-            timestamp_value = parse_iso_datetime(timestamp_input)
-            if timestamp_value is None:
-                timestamp_value = datetime.utcnow()
+            comm_index_path = record_dir / COMMUNICATIONS_FILENAME
+            index = _load_json_object(comm_index_path)
+            # derive next numeric key
+            next_idx = 1
+            if index:
+                try:
+                    next_idx = max(int(k) for k in index.keys() if str(k).isdigit()) + 1
+                except ValueError:
+                    next_idx = 1
 
-            method = (request.form.get('log_method') or 'Unspecified').strip()
-            direction = (request.form.get('log_direction') or 'incoming').strip().lower()
-            note_body = (request.form.get('log_body') or '').strip()
-
-            communications.append(
-                {
-                    'timestamp': timestamp_value.isoformat(timespec='seconds') + 'Z',
-                    'method': method,
-                    'direction': direction,
-                    'note': note_body,
-                }
-            )
+            actor_raw = (request.form.get('actor') or '').strip().lower()
+            direction_raw = (request.form.get('log_direction') or '').strip().lower()
+            if not actor_raw:
+                actor_raw = 'consultant' if direction_raw == 'outgoing' else 'customer'
+            entry = {
+                'who': 'consultant' if actor_raw == 'consultant' else 'customer',
+                'method': (request.form.get('log_method') or 'Unspecified').strip(),
+                'body': (request.form.get('log_body') or '').strip(),
+            }
+            index[str(next_idx)] = entry
+            try:
+                _save_json_object(comm_index_path, index)
+            except OSError:
+                flash('Could not save the communication log.', 'error')
             return 'log'
 
         if form_type == 'todo_add':
@@ -1033,19 +1085,9 @@ def lead_detail(record_type: str, record_id: str):
                 flash(f'Unable to process task via assistant: {exc}', 'error')
                 return 'todo_add'
 
-            # Persist assistant output to a standalone JSON within the record directory
-            record_dir = get_record_directory(directory, record_id)
-            todos_index_path = record_dir / 'todos.json'
-            existing: Dict[str, Dict] = {}
-            try:
-                if todos_index_path.exists():
-                    with todos_index_path.open('r', encoding='utf-8') as handle:
-                        loaded = json.load(handle)
-                        if isinstance(loaded, dict):
-                            existing = loaded
-            except (OSError, json.JSONDecodeError):
-                existing = {}
-
+            # Persist to standalone todos.json within the record directory
+            todos_index_path = record_dir / TODOS_FILENAME
+            existing = _load_json_object(todos_index_path)
             next_idx = 1
             if existing:
                 try:
@@ -1053,47 +1095,84 @@ def lead_detail(record_type: str, record_id: str):
                 except ValueError:
                     next_idx = 1
             entry_key = str(next_idx)
+            client_now = (request.form.get('client_now') or '').strip() or None
+            created_at = client_now or datetime.utcnow().isoformat(timespec='seconds')
             existing[entry_key] = {
-                'lead_id': todo.lead_id,
-                'task': todo.task,
-                'date_to_be_done': todo.date_to_be_done,
+                'text': todo.task if 'todo' in locals() else text,
+                'due_date': (todo.date_to_be_done if 'todo' in locals() else None) or None,
+                'status': 'Active',
+                'created_at': created_at,
             }
             try:
-                with todos_index_path.open('w', encoding='utf-8') as handle:
-                    json.dump(existing, handle, indent=2)
+                _save_json_object(todos_index_path, existing)
             except OSError:
-                flash('Could not save the To Do index file.', 'error')
-
-            # Also reflect in inline payload for UI convenience
-            todos = payload.setdefault('todos', [])
-            todos.append(
-                {
-                    'id': uuid4().hex,
-                    'text': todo.task,
-                    'due_date': todo.date_to_be_done or None,
-                    'done': False,
-                    'created_at': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
-                }
-            )
-
+                flash('Could not save the To Do file.', 'error')
             return 'todo_add'
 
         if form_type == 'todo_toggle':
             todo_id = (request.form.get('todo_id') or '').strip()
             desired_str = (request.form.get('done') or '').strip().lower()
             desired = True if desired_str in {'1', 'true', 'yes', 'on'} else False
-            todos = payload.setdefault('todos', [])
-            for item in todos:
-                if isinstance(item, dict) and item.get('id') == todo_id:
-                    item['done'] = desired
-                    break
+            todos_index_path = record_dir / TODOS_FILENAME
+            existing = _load_json_object(todos_index_path)
+            if todo_id in existing:
+                existing[todo_id]['status'] = 'Completed' if desired else 'Active'
+            else:
+                for key, item in existing.items():
+                    if isinstance(item, dict) and item.get('id') == todo_id:
+                        item['status'] = 'Completed' if desired else 'Active'
+                        break
+            try:
+                _save_json_object(todos_index_path, existing)
+            except OSError:
+                flash('Could not update the To Do file.', 'error')
             return 'todo_toggle'
 
         if form_type == 'todo_delete':
             todo_id = (request.form.get('todo_id') or '').strip()
-            todos = payload.setdefault('todos', [])
-            payload['todos'] = [item for item in todos if not (isinstance(item, dict) and item.get('id') == todo_id)]
+            todos_index_path = record_dir / TODOS_FILENAME
+            existing = _load_json_object(todos_index_path)
+            if todo_id in existing:
+                existing.pop(todo_id, None)
+            else:
+                to_remove = None
+                for key, item in existing.items():
+                    if isinstance(item, dict) and item.get('id') == todo_id:
+                        to_remove = key
+                        break
+                if to_remove:
+                    existing.pop(to_remove, None)
+            try:
+                _save_json_object(todos_index_path, existing)
+            except OSError:
+                flash('Could not update the To Do file.', 'error')
             return 'todo_delete'
+
+        if form_type == 'document_upload':
+            file = request.files.get('document_file')
+            if not file or not file.filename:
+                flash('Please choose a document to upload.', 'error')
+                return None
+            name = secure_filename(file.filename) or 'upload'
+            documents_dir = record_dir / 'documents'
+            documents_dir.mkdir(parents=True, exist_ok=True)
+            target = documents_dir / name
+            if target.exists():
+                stem = target.stem
+                suffix = target.suffix
+                idx = 2
+                while True:
+                    candidate = documents_dir / f"{stem} ({idx}){suffix}"
+                    if not candidate.exists():
+                        target = candidate
+                        break
+                    idx += 1
+            try:
+                file.save(target)
+            except Exception:
+                flash('Could not save the uploaded file.', 'error')
+                return None
+            return 'document_upload'
 
         return None
 
@@ -1116,9 +1195,19 @@ def lead_detail(record_type: str, record_id: str):
                     flash('To Do updated for this lead.', 'success')
                 elif update_kind == 'todo_delete':
                     flash('To Do removed from this lead.', 'success')
+                elif update_kind == 'document_upload':
+                    flash('Document uploaded to this lead.', 'success')
+        # Support optional redirect back (e.g., dashboard actions)
+        next_url = (request.form.get('next') or '').strip()
+        if next_url.startswith('/') and '//' not in next_url:
+            return redirect(next_url)
         return redirect(url_for('lead_detail', record_type=record_type, record_id=record_id))
 
-    communications_display = build_communication_entries(payload.get('communications', []))
+    # Prefer external communications index if available
+    comm_index_path = (get_record_directory(directory, record_id) / COMMUNICATIONS_FILENAME)
+    comm_index = _load_json_object(comm_index_path)
+    communications_source = comm_index if comm_index else (payload.get('communications', []) or [])
+    communications_display = build_communication_entries(communications_source)
 
     if record_type == 'quote':
         record_dir = get_record_directory(directory, record_id)
@@ -1138,15 +1227,37 @@ def lead_detail(record_type: str, record_id: str):
 
         timeline_entries = build_quote_timeline(payload)
 
+        # Build To Dos for UI from external file if available
+        todos_index = _load_json_object(record_dir / TODOS_FILENAME)
+        todos_ui: List[dict] = []
+        if todos_index:
+            for key in sorted((k for k in todos_index.keys() if str(k).isdigit()), key=lambda x: int(x)):
+                item = todos_index.get(key) or {}
+                if isinstance(item, dict):
+                    todos_ui.append({
+                        'id': key,
+                        'text': item.get('text') or '',
+                        'due_date': item.get('due_date') or None,
+                        'done': (item.get('status') or '').lower() == 'completed',
+                    })
+        else:
+            for item in payload.get('todos') or []:
+                if isinstance(item, dict):
+                    todos_ui.append(item)
+
         return render_template(
-            'quote_detail.html',
+            'record_detail.html',
+            record_type='quote',
             record_id=record_id,
-            quote=payload,
+            record=payload,
             metadata=metadata,
             documents=documents,
             timeline_entries=timeline_entries,
             communications=communications_display,
             default_timestamp=default_timestamp,
+            payments=None,
+            status=None,
+            todos=todos_ui,
         )
 
     if record_type == 'booking':
@@ -1169,10 +1280,29 @@ def lead_detail(record_type: str, record_id: str):
         status = payload.get('status') or {}
         timeline_entries = build_booking_timeline(payload)
 
+        # Build To Dos for UI from external file if available
+        todos_index = _load_json_object(record_dir / TODOS_FILENAME)
+        todos_ui: List[dict] = []
+        if todos_index:
+            for key in sorted((k for k in todos_index.keys() if str(k).isdigit()), key=lambda x: int(x)):
+                item = todos_index.get(key) or {}
+                if isinstance(item, dict):
+                    todos_ui.append({
+                        'id': key,
+                        'text': item.get('text') or '',
+                        'due_date': item.get('due_date') or None,
+                        'done': (item.get('status') or '').lower() == 'completed',
+                    })
+        else:
+            for item in payload.get('todos') or []:
+                if isinstance(item, dict):
+                    todos_ui.append(item)
+
         return render_template(
-            'booking_detail.html',
+            'record_detail.html',
+            record_type='booking',
             record_id=record_id,
-            booking=payload,
+            record=payload,
             metadata=metadata,
             documents=documents,
             payments=payments,
@@ -1180,6 +1310,7 @@ def lead_detail(record_type: str, record_id: str):
             timeline_entries=timeline_entries,
             communications=communications_display,
             default_timestamp=default_timestamp,
+            todos=todos_ui,
         )
 
     if record_type != 'enquiry':
@@ -1202,6 +1333,30 @@ def lead_detail(record_type: str, record_id: str):
         ('Infants', travellers.get('infants', 0)),
     ]
 
+    # To Dos for enquiry
+    todos_index = _load_json_object((get_record_directory(directory, record_id) / TODOS_FILENAME))
+    todos_ui: List[dict] = []
+    if todos_index:
+        for key in sorted((k for k in todos_index.keys() if str(k).isdigit()), key=lambda x: int(x)):
+            item = todos_index.get(key) or {}
+            if isinstance(item, dict):
+                todos_ui.append({
+                    'id': key,
+                    'text': item.get('text') or '',
+                    'due_date': item.get('due_date') or None,
+                    'done': (item.get('status') or '').lower() == 'completed',
+                })
+    else:
+        for item in payload.get('todos') or []:
+            if isinstance(item, dict):
+                todos_ui.append(item)
+
+    # Enquiry documents list
+    documents: List[str] = []
+    documents_dir = record_dir / 'documents'
+    if documents_dir.exists():
+        documents = [item.name for item in documents_dir.iterdir() if item.is_file()]
+
     lead_context = {
         'record_id': record_id,
         'record_type': record_type,
@@ -1216,7 +1371,7 @@ def lead_detail(record_type: str, record_id: str):
         'flex_month': schedule.get('flex_month'),
         'trip_length_display': trip_length_display,
         'notes': payload.get('notes') or '',
-        'todos': payload.get('todos') or [],
+        'todos': todos_ui,
     }
 
     return render_template(
@@ -1226,6 +1381,7 @@ def lead_detail(record_type: str, record_id: str):
         record_type_title=record_type.capitalize(),
         communications=communications_display,
         default_timestamp=default_timestamp,
+        documents=documents,
     )
 
 def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
@@ -1258,13 +1414,39 @@ def parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
 
 
 def build_communication_entries(raw_entries) -> List[dict]:
-    """Normalise persisted communication entries for template rendering."""
+    """Normalise persisted communication entries for template rendering.
+
+    Supports two shapes:
+    - Legacy list of dicts with keys: timestamp, method, direction, note
+    - New dict index {"1": {who, method, body}, ...}
+    """
+    # If provided a dict (new storage), convert to ordered list
+    if isinstance(raw_entries, dict):
+        items: List[dict] = []
+        for key in sorted((k for k in raw_entries.keys() if str(k).isdigit()), key=lambda x: int(x), reverse=True):
+            entry = raw_entries.get(key) or {}
+            if not isinstance(entry, dict):
+                continue
+            who = (entry.get('who') or 'customer').strip().lower()
+            direction = 'outgoing' if who == 'consultant' else 'incoming'
+            items.append(
+                {
+                    'timestamp': None,
+                    'method': (entry.get('method') or 'Unspecified').strip(),
+                    'direction': direction,
+                    'note': (entry.get('body') or '').strip(),
+                    '_seq_hint': int(key),
+                }
+            )
+        raw_entries = items
+
     if not isinstance(raw_entries, list):
         return []
 
     direction_styles = {
-        'incoming': ('Incoming', 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200'),
-        'outgoing': ('Outgoing', 'border-accent/50 bg-accent/10 text-accent-2'),
+        # Higher-contrast pills for quick scanning
+        'incoming': ('Customer', 'border-emerald-400 bg-emerald-500/30 text-emerald-100'),
+        'outgoing': ('Consultant', 'border-accent bg-accent/80 text-white'),
     }
 
     prepared: List[dict] = []
@@ -1275,17 +1457,22 @@ def build_communication_entries(raw_entries) -> List[dict]:
 
         timestamp_raw = entry.get('timestamp')
         timestamp_value = parse_iso_datetime(timestamp_raw)
-        timestamp_display = 'Unknown time'
+        timestamp_display = '—' if timestamp_raw is None else 'Unknown time'
+        sort_ts = ''
         sort_key = datetime.min
         if timestamp_value:
             timestamp_display = timestamp_value.strftime('%d %b %Y at %H:%M')
             sort_key = timestamp_value
+            sort_ts = timestamp_value.isoformat()
 
         method_raw = (entry.get('method') or 'Unspecified').strip()
         method_display = f"via {method_raw}" if method_raw else 'via Unspecified'
 
         direction_key = (entry.get('direction') or 'incoming').strip().lower()
         badge_text, badge_class = direction_styles.get(direction_key, direction_styles['incoming'])
+
+        # Use numeric key hint when available to improve relative ordering
+        seq_value = entry.get('_seq_hint') if isinstance(entry.get('_seq_hint'), int) else index
 
         prepared.append(
             {
@@ -1294,7 +1481,10 @@ def build_communication_entries(raw_entries) -> List[dict]:
                 'timestamp_display': timestamp_display,
                 'method_display': method_display,
                 'note': (entry.get('note') or '').strip(),
-                '_sort_key': (sort_key, index),
+                'sort_ts': sort_ts,
+                'seq': seq_value,
+                # Default newest-first: sort by timestamp desc, then seq desc
+                '_sort_key': (sort_key, seq_value),
             }
         )
 
@@ -1312,7 +1502,7 @@ def collect_active_todos(*, type_labels: Dict[str, str]) -> List[dict]:
     def _parse_due(value: Optional[str]) -> datetime:
         if not value:
             return datetime.max
-        for fmt in ('%d-%m-%Y', '%Y-%m-%d'):
+        for fmt in ('%d-%m-%Y', '%Y-%m-%d', '%d/%m/%Y'):
             try:
                 return datetime.strptime(value, fmt)
             except ValueError:
@@ -1334,9 +1524,24 @@ def collect_active_todos(*, type_labels: Dict[str, str]) -> List[dict]:
             except (OSError, json.JSONDecodeError):
                 continue
 
-            todos = payload.get('todos') or []
-            if not isinstance(todos, list):
-                continue
+            # Prefer external todos index if available
+            todos_path = record_dir / TODOS_FILENAME
+            todos_index = _load_json_object(todos_path)
+            todos: List[dict] = []
+            if todos_index:
+                for key in todos_index.keys():
+                    item = todos_index.get(key) or {}
+                    if isinstance(item, dict):
+                        todos.append({
+                            'text': item.get('text') or '',
+                            'due_date': item.get('due_date') or None,
+                            'done': (item.get('status') or '').lower() == 'completed',
+                            'todo_id': str(key),
+                        })
+            else:
+                todos = payload.get('todos') or []
+                if not isinstance(todos, list):
+                    todos = []
             name_display = payload.get('name') or (payload.get('client') or {}).get('name') or 'N/A'
             for item in todos:
                 if not isinstance(item, dict):
@@ -1357,6 +1562,7 @@ def collect_active_todos(*, type_labels: Dict[str, str]) -> List[dict]:
                         'due_sort': _parse_due(due),
                         'name_display': name_display,
                         'detail_url': url_for('lead_detail', record_type=record_type, record_id=record_dir.name),
+                        'todo_id': item.get('todo_id') or item.get('id') or '',
                     }
                 )
 
@@ -1446,6 +1652,17 @@ def build_enquiry_payload(form) -> Tuple[dict, Dict[str, str]]:
         field_errors['email'] = 'Email is required.'
     if not phone:
         field_errors['phone'] = 'Phone number is required.'
+
+    # Basic format validation (defensive; UI also guides input)
+    if email:
+        # very lightweight email format check
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            field_errors['email'] = 'Please enter a valid email address.'
+    if phone:
+        # allow digits, space, +, -, parentheses; require at least 7 digits
+        digits_only = re.sub(r"\D", "", phone)
+        if len(digits_only) < 7:
+            field_errors['phone'] = 'Please enter a valid phone number.'
 
     return payload, field_errors
 
@@ -1610,6 +1827,20 @@ def format_submitted_date(raw: Optional[str]) -> str:
         return dt_value.strftime('%d %b %Y')
     except ValueError:
         return raw or "N/A"
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(error):  # type: ignore[unused-argument]
+    """Provide a friendly message when uploads exceed MAX_CONTENT_LENGTH."""
+    try:
+        flash('Upload too large. Maximum allowed size is 10MB.', 'error')
+        # Redirect back to new lead intake if relevant; otherwise generic 413
+        from flask import request
+        if request.path.startswith('/leads/new'):
+            return redirect(url_for('leads_new'))
+    except Exception:
+        pass
+    return ('File too large. Maximum allowed size is 10MB.', 413)
 
 
 if __name__ == '__main__':

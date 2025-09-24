@@ -30,6 +30,12 @@
 - **Forms**: Rounded-2XL inputs on translucent panels (`bg-white/10`), focus ring `focus:ring-2 focus:ring-accent/60`.
 - **Selects**: Add `.theme-select` class for dark dropdown menus (`rgba(10,11,15,0.97)` options, white text).
 - **Cards**: Use `.card` helper (semi-transparent background, subtle inner highlight) with 24px padding.
+- **Type Pills** (lead types):
+  - Enquiry: `border-amber-400 bg-amber-500/35 text-amber-100`
+  - Quote: `border-blue-400 bg-blue-500/35 text-blue-100`
+  - Booking: `border-emerald-400 bg-emerald-500/45 text-emerald-100`
+  - Use inline `span` with `rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em]` plus the color classes above.
+  - Goal: quick scanability; ensure high contrast and consistent shape.
 
 ## Tabs
 - Top tabs appear directly below the page header on detail pages.
@@ -42,6 +48,7 @@
 - Title and helper text at top-left; “×” close control at top-right.
 - Primary submit at bottom-right as an accent pill.
 - Default focus moves to first interactive field when opened; overlay click and Escape close.
+- Prefer wiring scripts after modal markup to avoid timing issues.
 
 ## Feedback Patterns
 - Success: Emerald accent overlay (`border-emerald-500/40`, `bg-emerald-500/10`).
@@ -53,5 +60,5 @@
 - Sticky header retains blur (`backdrop-blur-xs`) to reinforce cockpit vibe.
 
 ## Assets
-- Replace `static/logo.svg` with SkyDesk mark once finalized.
+- App logo and favicon: `static/logo.png` (PNG). Consider providing 16/32/180px sizes.
 - Background glow elements positioned absolutely with gradient blur (see `base.html` for reference).
